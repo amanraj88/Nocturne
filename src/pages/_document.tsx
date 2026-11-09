@@ -3,7 +3,6 @@ import { Html, Head, Main, NextScript } from 'next/document';
 export default function Document() {
   return (
     <Html lang="en" className="dark overflow-x-clip" data-quality="high">
-      <html className="overflow-x-clip" hidden />
       <Head>
         <meta name="theme-color" content="#09080E" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
