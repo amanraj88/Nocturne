@@ -2,144 +2,196 @@ import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useLounge } from '@/context/LoungeContext';
-import { Play, Pause, Radio, ArrowRight, Sparkles, Disc3, ShieldCheck } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { ArrowRight, Play, Pause, Users } from 'lucide-react';
 
+/*
+  Hero — full-bleed split layout
+  ─────────────────────────────────────────────────────────────────────────────
+  Left 58%: editorial text, anchored mid-left
+  Right 42%: atmospheric vinyl photograph
+
+  Vinyl photograph chosen:
+    photo-1511671782779-c97d3d27a1d4 — close-up of a vinyl record under warm
+    studio light, strong bokeh background, tangible and cinematic.
+    Already confirmed working in this project (used as a Four Tet album art proxy).
+
+  We use it at a different crop/size here so it reads as the hero's own image.
+  Alt text is specific and honest.
+*/
 export const HeroSection: React.FC = () => {
   const { currentRoom, currentTrack, isPlaying, togglePlay, setIsCreateRoomOpen } = useLounge();
 
   return (
-    <section className="relative pt-12 pb-20 sm:pt-20 sm:pb-28 overflow-hidden">
-      {/* Deep Atmospheric Lighting */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-lavender-500/10 blur-[130px] rounded-full pointer-events-none" />
-      <div className="absolute top-1/3 left-1/3 w-[300px] h-[300px] bg-coral-500/10 blur-[100px] rounded-full pointer-events-none" />
+    <section className="relative overflow-hidden min-h-[92vh] flex flex-col lg:flex-row">
 
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
-          {/* Left Column: Editorial Headline & Manifesto */}
-          <div className="lg:col-span-7 space-y-6 sm:space-y-8">
-            {/* Supertag Pill */}
-            <div className="inline-flex items-center gap-2 rounded-full bg-plum-800/80 px-3.5 py-1.5 border border-lavender-400/20 shadow-sm text-xs text-lavender-300">
-              <span className="w-2 h-2 rounded-full bg-lime-400 animate-pulse" />
-              <span className="font-mono text-[11px] uppercase tracking-wider">
-                Phase 1 Prototype Active
-              </span>
-              <span className="text-zinc-500">•</span>
-              <span className="text-zinc-300 font-medium">Sub-30ms Sync Engine</span>
-            </div>
+      {/* ── Atmospheric diffuse glow — behind everything ── */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0
+                   bg-[radial-gradient(ellipse_80%_60%_at_20%_60%,rgba(185,154,255,0.06)_0%,transparent_70%)]"
+      />
 
-            {/* Editorial Title */}
-            <div className="space-y-3">
-              <h1 className="font-serif text-4xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-zinc-100 leading-[1.08]">
-                SYNCHRONIZED SOUND FOR AFTER-HOURS MINDS.
-              </h1>
-              <p className="max-w-xl text-base sm:text-lg text-zinc-400 leading-relaxed font-normal">
-                NOCTURNE is a shared listening lounge crafted for music obsessives.
-                Gather with friends, spin collaborative vinyl queues, and listen in micro-second lockstep.
-              </p>
-            </div>
+      {/* ════════════════════════════════════════════════════
+          LEFT COLUMN — text, anchored to vertical middle
+         ════════════════════════════════════════════════════ */}
+      <div
+        className="relative z-10 flex flex-col justify-end lg:justify-center
+                   w-full lg:w-[58%]
+                   px-8 pb-10 pt-24
+                   sm:px-12 sm:pb-14
+                   lg:px-16 lg:py-0"
+      >
+        {/* ── Chapter label ── */}
+        <p className="text-[10px] font-mono uppercase tracking-[0.22em] text-lavender-400 mb-7">
+          Collaborative Listening — Private Rooms
+        </p>
 
-            {/* Action Bar */}
-            <div className="flex flex-wrap items-center gap-4 pt-2">
-              <Link
-                href={`/room/${currentRoom.slug}`}
-                className="inline-flex items-center gap-2.5 rounded-full bg-lavender-500 hover:bg-lavender-400 text-midnight-950 font-semibold px-7 py-3.5 text-sm shadow-glow-lavender transition-all hover:scale-[1.02] active:scale-[0.98]"
-              >
-                <Radio className="w-4 h-4 animate-pulse" />
-                <span>Enter Live Lounge</span>
-                <ArrowRight className="w-4 h-4" />
-              </Link>
+        {/* ── Headline ── */}
+        <h1
+          className="font-serif font-bold text-zinc-100 tracking-tight
+                     text-[2.6rem] leading-[1.04]
+                     sm:text-6xl sm:leading-[1.03]
+                     lg:text-[5.5rem] lg:leading-[1.01]
+                     max-w-[15ch]"
+        >
+          After-hours<br />
+          listening,<br />
+          together.
+        </h1>
 
+        {/* ── Manifesto ── */}
+        <p className="mt-5 max-w-[36ch] text-[15px] leading-relaxed text-zinc-400">
+          NOCTURNE is a shared lounge where friends spin music in sync.
+          One queue, one moment — wherever everyone is.
+        </p>
+
+        {/* ── CTA ── */}
+        <div className="mt-8 flex flex-wrap items-center gap-3">
+          <Link
+            href={`/room/${currentRoom.slug}`}
+            className="inline-flex items-center gap-2 rounded-full
+                       bg-lavender-500 hover:bg-lavender-400 active:scale-[0.97]
+                       text-midnight-950 font-semibold
+                       px-6 py-3 text-sm
+                       shadow-glow-lavender
+                       transition-all duration-200"
+          >
+            Enter a Room
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+
+          <button
+            type="button"
+            onClick={() => setIsCreateRoomOpen(true)}
+            className="inline-flex items-center gap-2 rounded-full
+                       border border-plum-600/70 bg-plum-900/40
+                       hover:border-plum-500/60 hover:bg-plum-800/50
+                       text-zinc-300 px-6 py-3 text-sm font-medium
+                       transition-all duration-200 active:scale-[0.97]"
+          >
+            Start a Room
+          </button>
+        </div>
+
+        {/* ── Honest product descriptor — no fake numbers ── */}
+        <div className="mt-10 pt-8 border-t border-plum-800/50 flex items-center gap-7">
+          <span className="flex items-center gap-2 text-xs text-zinc-600">
+            <Users className="w-3.5 h-3.5" />
+            Collaborative
+          </span>
+          <span className="text-xs text-zinc-600">Synchronized playback</span>
+          <span className="text-xs text-zinc-600 hidden sm:block">Shared queue</span>
+        </div>
+      </div>
+
+      {/* ════════════════════════════════════════════════════
+          RIGHT COLUMN — vinyl photograph, full height
+         ════════════════════════════════════════════════════ */}
+      <div
+        className="relative overflow-hidden
+                   h-[55vw] min-h-[280px]
+                   w-full lg:w-[42%]
+                   order-first lg:order-last"
+      >
+        {/*
+          Vinyl record close-up — warm directional studio light, bokeh background.
+          photo-1511671782779-c97d3d27a1d4 confirmed in this project.
+          Cropped slightly upward so the record groove fills the frame.
+        */}
+        <Image
+          src="https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=1200&auto=format&fit=crop&q=88"
+          alt="Vinyl record under warm directional studio light"
+          fill
+          priority
+          sizes="(max-width: 1024px) 100vw, 42vw"
+          className="object-cover object-[center_35%]"
+        />
+
+        {/* Left-edge gradient — blends photo into dark left column */}
+        <div
+          aria-hidden="true"
+          className="absolute inset-0
+                     bg-gradient-to-r from-midnight-900 via-midnight-900/30 to-transparent
+                     lg:from-midnight-900 lg:via-midnight-900/50 lg:to-transparent"
+        />
+        {/* Bottom-edge gradient — softens transition to next section */}
+        <div
+          aria-hidden="true"
+          className="absolute inset-x-0 bottom-0 h-28
+                     bg-gradient-to-t from-midnight-900 to-transparent"
+        />
+
+        {/* ── Now Playing overlay — compact, bottom-right ── */}
+        <div className="absolute bottom-6 right-5 left-5 sm:left-auto sm:w-68 lg:w-72">
+          <div
+            className="rounded-xl bg-midnight-950/92 backdrop-blur-md
+                       border border-plum-700/60 p-4 shadow-2xl"
+          >
+            <div className="flex items-start gap-3">
+              {/* Album art thumbnail */}
+              <div className="relative w-11 h-11 rounded-lg overflow-hidden shrink-0
+                              border border-plum-700/60">
+                <Image
+                  src={currentTrack.albumArt}
+                  alt={`${currentTrack.title} album art`}
+                  fill
+                  className="object-cover"
+                />
+              </div>
+
+              {/* Track info */}
+              <div className="min-w-0 flex-1">
+                <p className="text-[9px] font-mono uppercase tracking-[0.18em] text-zinc-600 mb-0.5">
+                  Demo · Now Spinning
+                </p>
+                <p className="text-sm font-serif font-bold text-zinc-100 truncate leading-tight">
+                  {currentTrack.title}
+                </p>
+                <p className="text-xs text-lavender-300/70 truncate">
+                  {currentTrack.artist}
+                </p>
+              </div>
+
+              {/* Play/Pause */}
               <button
                 type="button"
-                onClick={() => setIsCreateRoomOpen(true)}
-                className="inline-flex items-center gap-2 rounded-full bg-plum-800/80 hover:bg-plum-700/80 text-zinc-200 border border-plum-600/50 px-6 py-3.5 text-sm font-medium transition-all hover:scale-[1.02] active:scale-[0.98]"
+                onClick={togglePlay}
+                className="shrink-0 w-9 h-9 rounded-full
+                           bg-lavender-500 hover:bg-lavender-400 active:scale-95
+                           flex items-center justify-center text-midnight-950
+                           transition-all duration-150"
+                aria-label={isPlaying ? 'Pause preview' : 'Play preview'}
               >
-                <span>Curate New Lounge</span>
+                {isPlaying
+                  ? <Pause className="w-3.5 h-3.5 fill-current" />
+                  : <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
+                }
               </button>
             </div>
 
-            {/* Quality Principles Telemetry */}
-            <div className="grid grid-cols-3 gap-4 pt-6 border-t border-plum-800/70 max-w-lg">
-              <div>
-                <div className="font-mono text-xs text-lavender-300 font-semibold">±15ms</div>
-                <div className="text-[11px] text-zinc-500 mt-0.5">Drift Tolerance</div>
-              </div>
-              <div>
-                <div className="font-mono text-xs text-coral-400 font-semibold">Zero AI Slop</div>
-                <div className="text-[11px] text-zinc-500 mt-0.5">Art-Directed Design</div>
-              </div>
-              <div>
-                <div className="font-mono text-xs text-lime-400 font-semibold">High / Low / Off</div>
-                <div className="text-[11px] text-zinc-500 mt-0.5">Motion Accessibility</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Column: Interactive Vinyl Sleeve Teaser */}
-          <div className="lg:col-span-5 flex justify-center">
-            <div className="relative w-full max-w-sm sm:max-w-md">
-              {/* Outer Decorative Aura */}
-              <div className="absolute -inset-4 bg-gradient-to-tr from-lavender-500/20 via-plum-700/10 to-coral-500/20 rounded-3xl blur-2xl opacity-60" />
-
-              {/* Sleeve Card */}
-              <div className="relative rounded-2xl bg-midnight-950/90 border border-lavender-400/25 p-5 shadow-2xl backdrop-blur-xl">
-                {/* Header Tag */}
-                <div className="flex items-center justify-between pb-3 mb-4 border-b border-plum-800">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-lime-400 animate-ping" />
-                    <span className="text-xs font-mono font-medium text-zinc-300">
-                      NOW SPINNING
-                    </span>
-                  </div>
-                  <span className="text-[10px] font-mono text-lavender-400 bg-lavender-500/10 px-2 py-0.5 rounded-full border border-lavender-400/20">
-                    {currentRoom.title}
-                  </span>
-                </div>
-
-                {/* Album Cover & Play Button Overlay */}
-                <div className="relative aspect-square rounded-xl overflow-hidden mb-4 group bg-plum-900 border border-plum-700/60 shadow-lg">
-                  <Image
-                    src={currentTrack.albumArt}
-                    alt={currentTrack.title}
-                    fill
-                    className="object-cover transition-transform duration-700 group-hover:scale-105"
-                  />
-                  <div className="absolute inset-0 bg-midnight-950/40 group-hover:bg-midnight-950/20 transition-colors flex items-center justify-center">
-                    <button
-                      type="button"
-                      onClick={togglePlay}
-                      className="w-14 h-14 rounded-full bg-lavender-500 hover:bg-lavender-400 text-midnight-950 flex items-center justify-center shadow-glow-lavender transition-all group-hover:scale-110 active:scale-95"
-                      aria-label={isPlaying ? 'Pause sample' : 'Play sample'}
-                    >
-                      {isPlaying ? (
-                        <Pause className="w-6 h-6 fill-current" />
-                      ) : (
-                        <Play className="w-6 h-6 fill-current ml-0.5" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Track Details */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-serif text-lg font-bold text-zinc-100">
-                      {currentTrack.title}
-                    </h3>
-                    <p className="text-xs text-lavender-300 font-medium">
-                      {currentTrack.artist}
-                    </p>
-                  </div>
-                  <Link
-                    href={`/room/${currentRoom.slug}`}
-                    className="flex items-center gap-1 text-xs text-zinc-400 hover:text-lavender-300 transition-colors group"
-                  >
-                    <span>Lounge</span>
-                    <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-                  </Link>
-                </div>
-              </div>
+            {/* Progress bar — static visual, honest */}
+            <div className="mt-3 h-[2px] rounded-full bg-plum-800 overflow-hidden">
+              <div className="h-full w-[26%] bg-lavender-400 rounded-full" />
             </div>
           </div>
         </div>
