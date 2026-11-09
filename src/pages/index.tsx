@@ -1,7 +1,6 @@
 import React from 'react';
 import Head from 'next/head';
 import { HeroSection } from '@/components/home/HeroSection';
-import { EditorialDivider } from '@/components/home/EditorialDivider';
 import { LiveLoungesGrid } from '@/components/home/LiveLoungesGrid';
 import { PhilosophySection } from '@/components/home/PhilosophySection';
 import { Footer } from '@/components/layout/Footer';
@@ -10,11 +9,10 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>NOCTURNE — Shared Listening for After-Hours Minds</title>
+        <title>NOCTURNE: Shared Listening for After-Hours Minds</title>
       </Head>
       <div className="flex flex-col min-h-full">
         <HeroSection />
-        <EditorialDivider />
         <LiveLoungesGrid />
         <PhilosophySection />
         <Footer />

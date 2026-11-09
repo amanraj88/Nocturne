@@ -10,14 +10,14 @@ export default function App({ Component, pageProps }: AppProps) {
   return (
     <LoungeProvider>
       <Head>
-        <title>NOCTURNE — Collaborative Listening Lounge</title>
+        <title>NOCTURNE: Collaborative Listening Lounge</title>
         <meta
           name="description"
           content="Intimate after-hours collaborative music lounge with synchronized playback."
         />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
-      <div className="flex min-h-screen flex-col bg-midnight-900 text-zinc-100">
+      <div className="flex min-h-screen flex-col bg-obsidian text-ivory">
         <Header />
         <main className="flex-1">
           <Component {...pageProps} />

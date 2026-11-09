@@ -1,20 +1,21 @@
 import React from 'react';
+import Link from 'next/link';
 
 export const Footer: React.FC = () => {
   return (
-    <footer className="border-t border-plum-800/60 bg-midnight-950 py-10 px-4 sm:px-6 lg:px-8 text-xs text-zinc-500 font-mono">
-      <div className="mx-auto max-w-7xl flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <span className="font-serif font-bold tracking-widest text-zinc-200">NOCTURNE</span>
-          <span>•</span>
-          <span>Phase 1 Design & Prototype Specification</span>
+    <footer className="border-t border-plum-subtle bg-obsidian py-12 px-6 sm:px-8 lg:px-10 text-xs text-warm-dim">
+      <div className="mx-auto max-w-7xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+        <div>
+          <span className="font-serif font-bold text-ivory text-sm">NOCTURNE</span>
+          <p className="mt-1 text-xs text-warm-dim">
+            Collaborative listening lounge prototype.
+          </p>
         </div>
 
-        <div className="flex items-center gap-6">
-          <span>Obsidian #0B0A10</span>
-          <span>Electric Lavender #B99AFF</span>
-          <span>Warm Coral #FF806B</span>
-        </div>
+        <nav className="flex items-center gap-6 text-xs text-warm-grey">
+          <Link href="/" className="hover:text-ivory transition-colors">Lounges</Link>
+          <Link href="/room/tokyo-afterhours" className="hover:text-ivory transition-colors">Listening stage</Link>
+        </nav>
       </div>
     </footer>
   );

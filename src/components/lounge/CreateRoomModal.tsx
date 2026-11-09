@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useLounge } from '@/context/LoungeContext';
-import { X, Sparkles, Users, Lock, Radio, Sliders } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { X, Users, Lock, Radio } from 'lucide-react';
 
 export const CreateRoomModal: React.FC = () => {
   const router = useRouter();
@@ -20,7 +19,6 @@ export const CreateRoomModal: React.FC = () => {
     'Nordic Ambient Echoes',
   ];
 
-  // Close on ESC
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setIsCreateRoomOpen(false);
@@ -49,30 +47,25 @@ export const CreateRoomModal: React.FC = () => {
       role="dialog"
       aria-modal="true"
       aria-labelledby="create-lounge-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-midnight-950/85 backdrop-blur-md"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-obsidian/85 backdrop-blur-md"
     >
       <div
         className="fixed inset-0"
         onClick={() => setIsCreateRoomOpen(false)}
       />
 
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 10 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 10 }}
-        className="relative z-10 w-full max-w-lg rounded-2xl bg-midnight-950 border border-plum-700/80 shadow-2xl p-6 overflow-hidden"
-      >
-        <div className="flex items-center justify-between pb-3 border-b border-plum-800">
+      <div className="relative z-10 w-full max-w-lg rounded-2xl bg-plum-surface border border-plum-subtle p-6 overflow-hidden">
+        <div className="flex items-center justify-between pb-3 border-b border-plum-subtle">
           <div className="flex items-center gap-2">
-            <Radio className="w-5 h-5 text-lavender-400" />
-            <h3 id="create-lounge-title" className="font-serif text-base font-bold tracking-wider text-zinc-100 uppercase">
-              Curate a New Lounge
+            <Radio className="w-5 h-5 text-lavender" />
+            <h3 id="create-lounge-title" className="font-serif text-base font-bold text-ivory">
+              Curate a new lounge
             </h3>
           </div>
           <button
             type="button"
             onClick={() => setIsCreateRoomOpen(false)}
-            className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-plum-800 transition-colors"
+            className="p-1.5 rounded-lg text-warm-dim hover:text-ivory hover:bg-plum-subtle transition-colors"
             aria-label="Close dialog"
           >
             <X className="w-4 h-4" />
@@ -80,10 +73,9 @@ export const CreateRoomModal: React.FC = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="mt-5 space-y-4">
-          {/* Lounge Name */}
           <div>
-            <label className="block text-xs font-mono uppercase tracking-wider text-zinc-400 mb-1.5">
-              Lounge Title
+            <label className="block text-xs text-warm-dim mb-1.5">
+              Lounge title
             </label>
             <input
               type="text"
@@ -91,14 +83,13 @@ export const CreateRoomModal: React.FC = () => {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Kyoto Sunset Reverie"
-              className="w-full rounded-xl bg-plum-900/60 border border-plum-700/80 px-3.5 py-2.5 text-xs text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-lavender-400/80 focus:ring-1 focus:ring-lavender-400/30"
+              className="w-full rounded-xl bg-plum-base border border-plum-subtle px-3.5 py-2.5 text-xs text-ivory placeholder:text-warm-dim focus:outline-none focus:border-lavender"
             />
           </div>
 
-          {/* Vibe Selection */}
           <div>
-            <label className="block text-xs font-mono uppercase tracking-wider text-zinc-400 mb-1.5">
-              Sonic Motif & Vibe
+            <label className="block text-xs text-warm-dim mb-1.5">
+              Sonic motif
             </label>
             <div className="flex flex-wrap gap-1.5">
               {vibePresets.map((vp) => (
@@ -106,10 +97,10 @@ export const CreateRoomModal: React.FC = () => {
                   key={vp}
                   type="button"
                   onClick={() => setVibe(vp)}
-                  className={`px-3 py-1.5 rounded-lg text-xs transition-all ${
+                  className={`px-3 py-1.5 rounded-lg text-xs transition-colors ${
                     vibe === vp
-                      ? 'bg-lavender-500/20 text-lavender-300 border border-lavender-400/40 font-medium'
-                      : 'bg-plum-900/40 text-zinc-400 border border-plum-800 hover:text-zinc-200 hover:border-plum-700'
+                      ? 'bg-lavender-subtle text-lavender border border-lavender/40 font-medium'
+                      : 'bg-plum-base text-warm-grey border border-plum-subtle hover:text-ivory'
                   }`}
                 >
                   {vp}
@@ -118,90 +109,87 @@ export const CreateRoomModal: React.FC = () => {
             </div>
           </div>
 
-          {/* Room Permissions */}
           <div>
-            <label className="block text-xs font-mono uppercase tracking-wider text-zinc-400 mb-1.5">
-              Listening Dynamics
+            <label className="block text-xs text-warm-dim mb-1.5">
+              Listening dynamics
             </label>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => setMode('collaborative')}
-                className={`p-3 rounded-xl border text-left transition-all ${
+                className={`p-3 rounded-xl border text-left transition-colors ${
                   mode === 'collaborative'
-                    ? 'bg-lavender-500/15 border-lavender-400/40 text-zinc-100'
-                    : 'bg-plum-900/40 border-plum-800 text-zinc-400 hover:border-plum-700'
+                    ? 'bg-lavender-subtle border-lavender/40 text-ivory'
+                    : 'bg-plum-base border-plum-subtle text-warm-dim hover:border-plum-subtle/80'
                 }`}
               >
-                <div className="flex items-center gap-1.5 font-semibold text-xs text-lavender-300">
+                <div className="flex items-center gap-1.5 font-semibold text-xs text-lavender whitespace-nowrap">
                   <Users className="w-3.5 h-3.5" />
                   <span>Democracy</span>
                 </div>
-                <p className="text-[10px] text-zinc-400 mt-1 leading-tight">
-                  Anyone can queue, vote to skip, and trigger vibe bursts.
+                <p className="text-[11px] text-warm-dim mt-1 leading-tight">
+                  Anyone can queue tracks.
                 </p>
               </button>
 
               <button
                 type="button"
                 onClick={() => setMode('host-curated')}
-                className={`p-3 rounded-xl border text-left transition-all ${
+                className={`p-3 rounded-xl border text-left transition-colors ${
                   mode === 'host-curated'
-                    ? 'bg-lavender-500/15 border-lavender-400/40 text-zinc-100'
-                    : 'bg-plum-900/40 border-plum-800 text-zinc-400 hover:border-plum-700'
+                    ? 'bg-lavender-subtle border-lavender/40 text-ivory'
+                    : 'bg-plum-base border-plum-subtle text-warm-dim hover:border-plum-subtle/80'
                 }`}
               >
-                <div className="flex items-center gap-1.5 font-semibold text-xs text-lavender-300">
+                <div className="flex items-center gap-1.5 font-semibold text-xs text-lavender whitespace-nowrap">
                   <Lock className="w-3.5 h-3.5" />
-                  <span>Host Dictation</span>
+                  <span>Host dictation</span>
                 </div>
-                <p className="text-[10px] text-zinc-400 mt-1 leading-tight">
-                  Only the host controls play/pause and queue order.
+                <p className="text-[11px] text-warm-dim mt-1 leading-tight">
+                  Only host controls transport.
                 </p>
               </button>
             </div>
           </div>
 
-          {/* Privacy Toggle */}
-          <div className="flex items-center justify-between p-3 rounded-xl bg-plum-900/40 border border-plum-800">
+          <div className="flex items-center justify-between p-3 rounded-xl bg-plum-base border border-plum-subtle">
             <div>
-              <span className="text-xs font-medium text-zinc-200">Private Lounge</span>
-              <p className="text-[10px] text-zinc-400">Only accessible with direct secret invite link</p>
+              <span className="text-xs font-medium text-ivory">Private lounge</span>
+              <p className="text-[11px] text-warm-dim">Only accessible with direct secret invite link</p>
             </div>
             <button
               type="button"
               onClick={() => setIsPrivate(!isPrivate)}
               className={`w-10 h-5 flex items-center rounded-full p-0.5 transition-colors ${
-                isPrivate ? 'bg-lavender-500' : 'bg-plum-700'
+                isPrivate ? 'bg-lavender' : 'bg-plum-subtle'
               }`}
               aria-label="Toggle private lounge"
             >
               <div
-                className={`w-4 h-4 rounded-full bg-midnight-950 transition-transform ${
+                className={`w-4 h-4 rounded-full bg-obsidian transition-transform ${
                   isPrivate ? 'translate-x-5' : 'translate-x-0'
                 }`}
               />
             </button>
           </div>
 
-          {/* Actions */}
           <div className="pt-2 flex items-center justify-end gap-2">
             <button
               type="button"
               onClick={() => setIsCreateRoomOpen(false)}
-              className="px-4 py-2 rounded-xl text-xs font-medium text-zinc-400 hover:text-zinc-200 transition-colors"
+              className="px-4 py-2 rounded-xl text-xs font-medium text-warm-dim hover:text-ivory transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-5 py-2 rounded-xl text-xs font-semibold bg-lavender-500 hover:bg-lavender-400 text-midnight-950 shadow-glow-lavender transition-all hover:scale-[1.02] active:scale-[0.98]"
+              className="px-5 py-2 rounded-xl text-xs font-semibold bg-lavender hover:bg-lavender-400 text-obsidian shadow-glow-lavender transition-transform active:scale-[0.98]"
             >
-              Open Lounge
+              Open lounge
             </button>
           </div>
         </form>
-      </motion.div>
+      </div>
     </div>
   );
 };

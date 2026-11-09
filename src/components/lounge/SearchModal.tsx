@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useLounge } from '@/context/LoungeContext';
-import { Search, X, Plus, Check, Youtube, Music } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Search, X, Plus, Check, Radio } from 'lucide-react';
 
 const MOCK_SEARCH_RESULTS = [
   {
@@ -44,7 +43,6 @@ export const SearchModal: React.FC = () => {
   const [query, setQuery] = useState('');
   const [addedIds, setAddedIds] = useState<string[]>([]);
 
-  // Close on ESC
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setIsSearchOpen(false);
@@ -81,32 +79,27 @@ export const SearchModal: React.FC = () => {
       role="dialog"
       aria-modal="true"
       aria-labelledby="search-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-midnight-950/85 backdrop-blur-md"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-obsidian/85 backdrop-blur-md"
     >
       <div
         className="fixed inset-0"
         onClick={() => setIsSearchOpen(false)}
       />
 
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 10 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 10 }}
-        className="relative z-10 w-full max-w-xl rounded-2xl bg-midnight-950 border border-plum-700/80 shadow-2xl p-5 overflow-hidden"
-      >
+      <div className="relative z-10 w-full max-w-xl rounded-2xl bg-plum-surface border border-plum-subtle p-5 overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-plum-800">
+        <div className="flex items-center justify-between pb-3 border-b border-plum-subtle">
           <div className="flex items-center gap-2">
-            <Youtube className="w-5 h-5 text-coral-500" />
-            <h3 id="search-modal-title" className="font-serif text-sm font-bold tracking-wider text-zinc-100 uppercase">
-              Add Track from YouTube
+            <Radio className="w-4 h-4 text-lavender" />
+            <h3 id="search-modal-title" className="font-serif text-sm font-bold text-ivory">
+              Queue a track
             </h3>
           </div>
           <button
             type="button"
             onClick={() => setIsSearchOpen(false)}
-            className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-plum-800 transition-colors"
-            aria-label="Close search"
+            className="p-1.5 rounded-lg text-warm-dim hover:text-ivory hover:bg-plum-subtle transition-colors"
+            aria-label="Close search dialog"
           >
             <X className="w-4 h-4" />
           </button>
@@ -114,21 +107,21 @@ export const SearchModal: React.FC = () => {
 
         {/* Search Input */}
         <div className="relative mt-4">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-warm-dim" />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search tracks, artists, or paste YouTube link..."
+            placeholder="Search tracks or artists..."
             autoFocus
-            className="w-full rounded-xl bg-plum-900/60 border border-plum-700/80 pl-10 pr-4 py-2.5 text-xs text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-lavender-400/80 focus:ring-1 focus:ring-lavender-400/30"
+            className="w-full rounded-xl bg-plum-base border border-plum-subtle pl-10 pr-4 py-2.5 text-xs text-ivory placeholder:text-warm-dim focus:outline-none focus:border-lavender"
           />
         </div>
 
         {/* Results List */}
         <div className="mt-4 max-h-80 overflow-y-auto space-y-2 pr-1">
-          <div className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 px-1">
-            {query.trim() ? 'Search Results' : 'Recommended for this Lounge'}
+          <div className="text-xs text-warm-dim px-1">
+            {query.trim() ? 'Search results' : 'Suggested for this lounge'}
           </div>
 
           {filtered.map((item) => {
@@ -137,10 +130,10 @@ export const SearchModal: React.FC = () => {
             return (
               <div
                 key={item.youtubeId}
-                className="flex items-center justify-between rounded-xl bg-plum-900/40 p-2.5 border border-plum-800 hover:border-plum-700 transition-all"
+                className="flex items-center justify-between rounded-xl bg-plum-base/50 p-2.5 border border-plum-subtle hover:border-plum-subtle/80 transition-colors"
               >
                 <div className="flex items-center gap-3 min-w-0 pr-3">
-                  <div className="relative w-12 h-12 rounded-lg overflow-hidden shrink-0 bg-plum-800">
+                  <div className="relative w-12 h-12 rounded-lg overflow-hidden shrink-0 bg-plum-surface">
                     <Image
                       src={item.albumArt}
                       alt={item.title}
@@ -149,13 +142,13 @@ export const SearchModal: React.FC = () => {
                     />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs font-semibold text-zinc-100 truncate">
+                    <p className="text-xs font-semibold text-ivory truncate">
                       {item.title}
                     </p>
-                    <p className="text-[11px] text-zinc-400 truncate">
+                    <p className="text-xs text-warm-dim truncate">
                       {item.artist}
                     </p>
-                    <span className="text-[10px] font-mono text-zinc-500">
+                    <span className="text-[11px] text-warm-dim/80 font-mono">
                       {item.views}
                     </span>
                   </div>
@@ -165,10 +158,10 @@ export const SearchModal: React.FC = () => {
                   type="button"
                   onClick={() => !isAdded && handleAdd(item)}
                   disabled={isAdded}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium shrink-0 transition-all ${
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium shrink-0 transition-colors ${
                     isAdded
-                      ? 'bg-lime-500/15 text-lime-400 border border-lime-400/30 cursor-default'
-                      : 'bg-lavender-500 hover:bg-lavender-400 text-midnight-950 font-semibold shadow-sm hover:scale-105 active:scale-95'
+                      ? 'bg-green/10 text-green border border-green/30 cursor-default'
+                      : 'bg-lavender hover:bg-lavender-400 text-obsidian font-semibold active:scale-95'
                   }`}
                 >
                   {isAdded ? (
@@ -187,7 +180,7 @@ export const SearchModal: React.FC = () => {
             );
           })}
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 };

@@ -6,7 +6,7 @@ interface VisualizerProps {
   barCount?: number;
 }
 
-export const AudioVisualizer: React.FC<VisualizerProps> = ({ className = '', barCount = 36 }) => {
+export const AudioVisualizer: React.FC<VisualizerProps> = ({ className = '', barCount = 32 }) => {
   const { isPlaying, quality } = useLounge();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -26,21 +26,17 @@ export const AudioVisualizer: React.FC<VisualizerProps> = ({ className = '', bar
       const height = canvas.height;
       const barWidth = width / barCount - 2;
 
-      // Color gradient: Electric Lavender to Warm Coral
       const gradient = ctx.createLinearGradient(0, height, 0, 0);
-      gradient.addColorStop(0, 'rgba(185, 154, 255, 0.4)');
-      gradient.addColorStop(0.7, 'rgba(185, 154, 255, 0.9)');
-      gradient.addColorStop(1, 'rgba(255, 128, 107, 0.95)');
+      gradient.addColorStop(0, 'rgba(185, 154, 255, 0.25)');
+      gradient.addColorStop(1, 'rgba(185, 154, 255, 0.85)');
 
       for (let i = 0; i < barCount; i++) {
-        let barHeight = 6;
+        let barHeight = 4;
         if (isPlaying) {
-          // harmonic wave equation simulating realistic audio spectrum
           const freq1 = Math.sin((i / barCount) * Math.PI * 4 + phase) * 0.35;
           const freq2 = Math.cos((i / barCount) * Math.PI * 2.5 - phase * 0.8) * 0.25;
-          const freq3 = Math.sin((i / 5) + phase * 1.5) * 0.15;
-          const centerWeight = Math.sin((i / barCount) * Math.PI); // center emphasis
-          const intensity = Math.max(0.1, (0.5 + freq1 + freq2 + freq3) * centerWeight);
+          const centerWeight = Math.sin((i / barCount) * Math.PI);
+          const intensity = Math.max(0.08, (0.45 + freq1 + freq2) * centerWeight);
           barHeight = Math.min(height, Math.max(4, intensity * height * 0.85));
         }
 
@@ -48,14 +44,13 @@ export const AudioVisualizer: React.FC<VisualizerProps> = ({ className = '', bar
         const y = height - barHeight;
 
         ctx.fillStyle = gradient;
-        // Rounded bar caps
         ctx.beginPath();
-        ctx.roundRect(x, y, barWidth, barHeight, [2, 2, 0, 0]);
+        ctx.roundRect(x, y, barWidth, barHeight, [1, 1, 0, 0]);
         ctx.fill();
       }
 
       if (isPlaying) {
-        phase += 0.045;
+        phase += 0.04;
       }
 
       animationFrameId = requestAnimationFrame(render);
@@ -70,8 +65,8 @@ export const AudioVisualizer: React.FC<VisualizerProps> = ({ className = '', bar
 
   if (quality === 'off') {
     return (
-      <div className={`h-8 flex items-center justify-center opacity-30 ${className}`}>
-        <div className="w-full h-[1px] bg-lavender-400/40" />
+      <div className={`h-8 flex items-center justify-center opacity-20 ${className}`}>
+        <div className="w-full h-[1px] bg-lavender/30" />
       </div>
     );
   }
@@ -80,9 +75,10 @@ export const AudioVisualizer: React.FC<VisualizerProps> = ({ className = '', bar
     <div className={`relative overflow-hidden ${className}`}>
       <canvas
         ref={canvasRef}
+        aria-hidden="true"
         width={360}
-        height={48}
-        className="w-full h-12 block"
+        height={40}
+        className="w-full h-10 block"
       />
     </div>
   );
