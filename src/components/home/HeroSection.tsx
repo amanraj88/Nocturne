@@ -1,14 +1,48 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useLounge } from '@/context/LoungeContext';
-import { ArrowRight, Play, Pause, Users } from 'lucide-react';
+import { ArrowRight, Play, Pause, Users, Disc3 } from 'lucide-react';
+
+/* Resilient Image with Graceful Fallback */
+const HeroImageWithFallback: React.FC<{
+  src: string;
+  alt: string;
+  className?: string;
+  priority?: boolean;
+  sizes?: string;
+}> = ({ src, alt, className = '', priority = false, sizes = '100vw' }) => {
+  const [hasError, setHasError] = useState(false);
+
+  if (hasError) {
+    return (
+      <div className="absolute inset-0 flex flex-col items-center justify-center bg-plum-base/95 p-6 text-center">
+        <Disc3 className="w-12 h-12 text-lavender/50 mb-3 animate-pulse" />
+        <span className="font-serif text-sm text-ivory/80 tracking-wide">
+          NOCTURNE Vinyl Lounge
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <Image
+      src={src}
+      alt={alt}
+      fill
+      priority={priority}
+      sizes={sizes}
+      className={className}
+      onError={() => setHasError(true)}
+    />
+  );
+};
 
 export const HeroSection: React.FC = () => {
   const { currentRoom, currentTrack, isPlaying, togglePlay, setIsCreateRoomOpen } = useLounge();
 
   return (
-    <section className="relative overflow-hidden min-h-[92dvh] flex flex-col lg:flex-row">
+    <section className="relative overflow-hidden min-h-[90dvh] flex flex-col lg:flex-row">
       {/* Subtle Atmospheric Ground */}
       <div
         aria-hidden="true"
@@ -16,8 +50,8 @@ export const HeroSection: React.FC = () => {
       />
 
       {/* Left Column: Editorial Statement & Actions */}
-      <div className="relative z-10 flex flex-col justify-end lg:justify-center w-full lg:w-[58%] px-8 pb-12 pt-20 sm:px-12 sm:pb-16 lg:px-16 lg:py-0">
-        <h1 className="font-serif font-bold text-ivory tracking-tight text-[2.75rem] leading-[1.04] sm:text-6xl sm:leading-[1.02] lg:text-[5.5rem] lg:leading-[1.01] max-w-[15ch]">
+      <div className="relative z-10 flex flex-col justify-end lg:justify-center w-full lg:w-[56%] px-8 pb-12 pt-20 sm:px-12 sm:pb-16 lg:px-16 lg:py-0">
+        <h1 className="font-serif font-bold text-ivory tracking-tight text-[2.5rem] leading-[1.08] sm:text-5xl sm:leading-[1.06] lg:text-[4.25rem] lg:leading-[1.04] max-w-[14ch]">
           After-hours listening, together.
         </h1>
 
@@ -55,36 +89,39 @@ export const HeroSection: React.FC = () => {
         </div>
       </div>
 
-      {/* Right Column: Physical Vinyl Photography */}
-      <div className="relative overflow-hidden h-[60vw] min-h-[300px] w-full lg:w-[42%] order-first lg:order-last">
-        <Image
-          src="https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=1200&auto=format&fit=crop&q=88"
-          alt="Vinyl record under warm studio light"
-          fill
+      {/* Right Column: Authentic Physical Vinyl & Turntable Atmosphere */}
+      <div className="relative overflow-hidden h-[60vw] min-h-[320px] w-full lg:w-[44%] order-first lg:order-last bg-obsidian">
+        <HeroImageWithFallback
+          src="https://images.unsplash.com/photo-1539185441755-769473a23570?w=1200&auto=format&fit=crop&q=88"
+          alt="Vinyl record spinning on turntable tonearm under atmospheric late-night amber light"
           priority
-          sizes="(max-width: 1024px) 100vw, 42vw"
+          sizes="(max-width: 1024px) 100vw, 44vw"
           className="object-cover object-[center_35%]"
         />
 
-        {/* Left and Bottom Edge Atmospheric Fades */}
+        {/* Seamless Atmospheric Gradient Fades into Obsidian Palette */}
         <div
           aria-hidden="true"
-          className="absolute inset-0 bg-gradient-to-r from-obsidian via-obsidian/30 to-transparent lg:from-obsidian lg:via-obsidian/50 lg:to-transparent"
+          className="absolute inset-0 bg-gradient-to-r from-obsidian via-obsidian/40 to-transparent lg:from-obsidian lg:via-obsidian/50 lg:to-transparent pointer-events-none"
         />
         <div
           aria-hidden="true"
-          className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-obsidian to-transparent"
+          className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-obsidian to-transparent pointer-events-none"
+        />
+        <div
+          aria-hidden="true"
+          className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-obsidian/50 to-transparent pointer-events-none"
         />
 
         {/* Listening Anchor Card */}
-        <div className="absolute bottom-6 right-6 left-6 sm:left-auto sm:w-72">
+        <div className="absolute bottom-6 right-6 left-6 sm:left-auto sm:w-72 z-20">
           <div className="rounded-xl bg-plum-surface/95 backdrop-blur-md border border-plum-subtle p-4">
             <div className="flex items-start gap-3">
-              <div className="relative w-12 h-12 rounded-lg overflow-hidden shrink-0 border border-plum-subtle">
-                <Image
+              <div className="relative w-12 h-12 rounded-lg overflow-hidden shrink-0 border border-plum-subtle bg-plum-base">
+                <HeroImageWithFallback
                   src={currentTrack.albumArt}
                   alt={`${currentTrack.title} album cover`}
-                  fill
+                  sizes="48px"
                   className="object-cover"
                 />
               </div>

@@ -15,6 +15,7 @@ export interface Track {
   title: string;
   artist: string;
   albumArt: string;
+  artworkId?: 'noc-01' | 'noc-02' | 'noc-03';
   durationSeconds: number;
   addedBy: {
     id: string;
@@ -38,6 +39,7 @@ export interface Room {
   isPrivate: boolean;
   mode: 'collaborative' | 'host-curated';
   currentTrackId: string;
+  artworkId?: 'noc-01' | 'noc-02' | 'noc-03';
   ambientColor: string;
   accentColor: string;
 }

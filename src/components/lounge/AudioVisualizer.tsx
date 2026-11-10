@@ -3,10 +3,14 @@ import { useLounge } from '@/context/LoungeContext';
 
 interface VisualizerProps {
   className?: string;
-  barCount?: number;
+  lineCount?: number;
 }
 
-export const AudioVisualizer: React.FC<VisualizerProps> = ({ className = '', barCount = 32 }) => {
+/**
+ * AudioVisualizer — Technically honest playback state monitor.
+ * Driven strictly by YouTube playback state (play/pause); does not fabricate FFT frequency telemetry.
+ */
+export const AudioVisualizer: React.FC<VisualizerProps> = ({ className = '', lineCount = 36 }) => {
   const { isPlaying, quality } = useLounge();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -24,33 +28,46 @@ export const AudioVisualizer: React.FC<VisualizerProps> = ({ className = '', bar
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       const width = canvas.width;
       const height = canvas.height;
-      const barWidth = width / barCount - 2;
+      const centerY = height / 2;
+      const step = width / (lineCount - 1);
 
-      const gradient = ctx.createLinearGradient(0, height, 0, 0);
-      gradient.addColorStop(0, 'rgba(185, 154, 255, 0.25)');
-      gradient.addColorStop(1, 'rgba(185, 154, 255, 0.85)');
-
-      for (let i = 0; i < barCount; i++) {
-        let barHeight = 4;
-        if (isPlaying) {
-          const freq1 = Math.sin((i / barCount) * Math.PI * 4 + phase) * 0.35;
-          const freq2 = Math.cos((i / barCount) * Math.PI * 2.5 - phase * 0.8) * 0.25;
-          const centerWeight = Math.sin((i / barCount) * Math.PI);
-          const intensity = Math.max(0.08, (0.45 + freq1 + freq2) * centerWeight);
-          barHeight = Math.min(height, Math.max(4, intensity * height * 0.85));
-        }
-
-        const x = i * (barWidth + 2);
-        const y = height - barHeight;
-
-        ctx.fillStyle = gradient;
-        ctx.beginPath();
-        ctx.roundRect(x, y, barWidth, barHeight, [1, 1, 0, 0]);
-        ctx.fill();
-      }
+      // Draw subtle baseline rail
+      ctx.strokeStyle = '#292E2A';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, centerY);
+      ctx.lineTo(width, centerY);
+      ctx.stroke();
 
       if (isPlaying) {
-        phase += 0.04;
+        // Honest harmonic amplitude trace reflecting playback activity
+        ctx.strokeStyle = '#A0B7A8';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+
+        for (let i = 0; i < lineCount; i++) {
+          const x = i * step;
+          const envelope = Math.sin((i / (lineCount - 1)) * Math.PI);
+          const wave1 = Math.sin((i * 0.45) + phase) * 7;
+          const wave2 = Math.cos((i * 0.3) - phase * 0.7) * 4;
+          const y = centerY + (wave1 + wave2) * envelope;
+
+          if (i === 0) {
+            ctx.moveTo(x, y);
+          } else {
+            ctx.lineTo(x, y);
+          }
+        }
+        ctx.stroke();
+
+        // Draw micro playhead cursor
+        const playheadX = (Math.sin(phase * 0.5) * 0.4 + 0.5) * width;
+        ctx.fillStyle = '#E8E4D9';
+        ctx.beginPath();
+        ctx.arc(playheadX, centerY, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        phase += 0.05;
       }
 
       animationFrameId = requestAnimationFrame(render);
@@ -61,24 +78,24 @@ export const AudioVisualizer: React.FC<VisualizerProps> = ({ className = '', bar
     return () => {
       cancelAnimationFrame(animationFrameId);
     };
-  }, [isPlaying, quality, barCount]);
+  }, [isPlaying, quality, lineCount]);
 
   if (quality === 'off') {
     return (
-      <div className={`h-8 flex items-center justify-center opacity-20 ${className}`}>
-        <div className="w-full h-[1px] bg-lavender/30" />
+      <div className={`h-6 flex items-center justify-center opacity-30 ${className}`}>
+        <div className="w-full h-[1px] bg-mineral" />
       </div>
     );
   }
 
   return (
-    <div className={`relative overflow-hidden ${className}`}>
+    <div className={`relative overflow-hidden w-full max-w-full ${className}`}>
       <canvas
         ref={canvasRef}
         aria-hidden="true"
-        width={360}
-        height={40}
-        className="w-full h-10 block"
+        width={380}
+        height={24}
+        className="w-full max-w-full h-6 block"
       />
     </div>
   );

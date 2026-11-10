@@ -1,52 +1,117 @@
 /* Hallmark · atmospheric · no-slop edition · critique: P5 H5 E5 S5 R5 V5 */
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* =========================================================================
+   Self-Hosted Variable Fonts via @font-face (Zero runtime external requests)
+   ========================================================================= */
+@font-face {
+  font-family: 'Syne';
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url('/fonts/syne.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url('/fonts/inter.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url('/fonts/jetbrainsmono.woff2') format('woff2');
+}
+
 :root {
-  /* Foundations */
-  --color-obsidian: #09080E;
-  --color-plum-base: #12101A;
-  --color-plum-surface: #191624;
-  --color-plum-subtle: #242033;
+  /* =========================================================================
+     NOCTURNE Creative Direction v1.0 — Foundations (Mineral / Oxide)
+     ========================================================================= */
+  --color-deep-ink: #101514;
+  --color-carbon: #191E1B;
+  --color-graphite: #292E2A;
+  --color-graphite-subtle: #202622;
 
   /* Typographic Ink */
-  --color-ivory: #F7F5F0;
-  --color-warm-grey: #A39DAF;
-  --color-dim-grey: #6E687A;
+  --color-warm-bone: #E8E4D9;
+  --color-ash: #92958B;
+  --color-ash-dim: #62665D;
 
-  /* Interactive Accents */
-  --color-lavender: #B99AFF;
-  --color-lavender-subtle: rgba(185, 154, 255, 0.12);
-  --color-coral: #FF806B;
-  --color-coral-subtle: rgba(255, 128, 107, 0.12);
-  --color-green: #38D39F;
+  /* Accents */
+  --color-mineral: #A0B7A8;
+  --color-mineral-subtle: rgba(160, 183, 168, 0.12);
+  --color-mineral-glow: rgba(160, 183, 168, 0.22);
 
-  /* Hairlines and Borders */
-  --border-hairline: rgba(185, 154, 255, 0.10);
-  --border-focus: #B99AFF;
+  --color-oxide: #A65D45;
+  --color-oxide-subtle: rgba(166, 93, 69, 0.12);
 
-  /* Typography */
-  --font-serif: 'Cinzel', serif;
+  /* Genuine Telemetry / System States */
+  --color-sync: #A0B7A8;
+  --color-alert: #A65D45;
+
+  /* Hairlines and Focus */
+  --border-hairline: rgba(160, 183, 168, 0.14);
+  --border-graphite: #292E2A;
+  --border-focus: #A0B7A8;
+
+  /* =========================================================================
+     Backward-Compatible Aliases (Preserves existing components during Step 1-2)
+     ========================================================================= */
+  --color-obsidian: var(--color-deep-ink);
+  --color-plum-base: var(--color-deep-ink);
+  --color-plum-surface: var(--color-carbon);
+  --color-plum-subtle: var(--color-graphite);
+
+  --color-ivory: var(--color-warm-bone);
+  --color-warm-grey: var(--color-ash);
+  --color-dim-grey: var(--color-ash-dim);
+
+  --color-lavender: var(--color-mineral);
+  --color-lavender-subtle: var(--color-mineral-subtle);
+  --color-coral: var(--color-oxide);
+  --color-coral-subtle: var(--color-oxide-subtle);
+  --color-green: var(--color-mineral);
+
+  /* Typography Variables */
+  --font-display: 'Syne', sans-serif;
   --font-body: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-telemetry: 'Space Grotesk', monospace;
+  --font-telemetry: 'JetBrains Mono', monospace;
+
+  /* Backward-compatible alias for existing components */
+  --font-serif: var(--font-display);
 }
 
 /* Floor: overflow-x clip on both html and body */
 html {
   overflow-x: clip;
+  width: 100%;
+  max-width: 100vw;
 }
 
 body {
   overflow-x: clip;
-  background-color: var(--color-obsidian);
-  color: var(--color-ivory);
+  width: 100%;
+  max-width: 100vw;
+  background-color: var(--color-deep-ink);
+  color: var(--color-warm-bone);
   font-family: var(--font-body);
   letter-spacing: -0.01em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+#__next {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
 }
 
 /* Restrained Atmospheric Noise */
@@ -56,9 +121,9 @@ body {
   background-size: 128px 128px;
 }
 
-/* Single Soft Acoustic Backglow */
+/* Single Soft Acoustic Backglow in Mineral */
 .ambient-glow {
-  background: radial-gradient(circle at 50% 30%, var(--color-lavender-subtle) 0%, transparent 70%);
+  background: radial-gradient(circle at 50% 30%, var(--color-mineral-subtle) 0%, transparent 70%);
 }
 
 /* Custom Scrollbar */
@@ -67,14 +132,14 @@ body {
   height: 5px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--color-obsidian);
+  background: var(--color-deep-ink);
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-plum-subtle);
+  background: var(--color-graphite);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-lavender);
+  background: var(--color-mineral);
 }
 
 /* Accessible Instant Focus Ring */

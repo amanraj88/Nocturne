@@ -9,18 +9,28 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // NOCTURNE Creative Direction v1.0 — Mineral / Oxide Palette
+        'deep-ink': 'var(--color-deep-ink)',
+        carbon: 'var(--color-carbon)',
+        graphite: 'var(--color-graphite)',
+        'warm-bone': 'var(--color-warm-bone)',
+        ash: 'var(--color-ash)',
+        mineral: {
+          DEFAULT: 'var(--color-mineral)',
+          subtle: 'var(--color-mineral-subtle)',
+          glow: 'var(--color-mineral-glow)',
+        },
+        oxide: {
+          DEFAULT: 'var(--color-oxide)',
+          subtle: 'var(--color-oxide-subtle)',
+        },
+
+        // Backward-compatible aliases for existing components
         obsidian: 'var(--color-obsidian)',
         plum: {
           base: 'var(--color-plum-base)',
           surface: 'var(--color-plum-surface)',
           subtle: 'var(--color-plum-subtle)',
-          950: '#09080E',
-          900: '#12101A',
-          850: '#151320',
-          800: '#191624',
-          700: '#242033',
-          600: '#322C46',
-          500: '#463E60',
         },
         ivory: 'var(--color-ivory)',
         warm: {
@@ -30,29 +40,26 @@ const config: Config = {
         lavender: {
           DEFAULT: 'var(--color-lavender)',
           subtle: 'var(--color-lavender-subtle)',
-          400: '#B99AFF',
-          500: '#9B72F7',
-          300: '#D4C2FF',
         },
         coral: {
           DEFAULT: 'var(--color-coral)',
           subtle: 'var(--color-coral-subtle)',
-          400: '#FF9582',
-          500: '#FF806B',
         },
         green: {
           DEFAULT: 'var(--color-green)',
-          400: '#38D39F',
         },
       },
       fontFamily: {
-        serif: ['var(--font-serif)', 'serif'],
-        sans: ['var(--font-body)', 'sans-serif'],
-        mono: ['var(--font-telemetry)', 'monospace'],
+        display: ['Syne', 'sans-serif'],
+        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        mono: ['JetBrains Mono', 'monospace'],
+        // Backward-compatible alias for existing components
+        serif: ['Syne', 'sans-serif'],
       },
       boxShadow: {
-        'glow-lavender': '0 0 35px -8px rgba(185, 154, 255, 0.25)',
-        'glow-album': '0 20px 50px -15px rgba(0, 0, 0, 0.8), 0 0 30px -8px rgba(185, 154, 255, 0.15)',
+        'glow-mineral': '0 0 35px -8px rgba(160, 183, 168, 0.20)',
+        'glow-lavender': '0 0 35px -8px rgba(160, 183, 168, 0.20)',
+        'glow-album': '0 20px 50px -15px rgba(0, 0, 0, 0.8), 0 0 30px -8px rgba(160, 183, 168, 0.12)',
       },
     },
   },

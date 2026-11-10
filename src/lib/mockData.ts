@@ -57,7 +57,8 @@ export const INITIAL_TRACKS: Track[] = [
     youtubeId: '7P2rX4D5p8E',
     title: 'LesAlpx',
     artist: 'Floating Points',
-    albumArt: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=85',
+    albumArt: '/artwork/noc-01.svg',
+    artworkId: 'noc-01',
     durationSeconds: 284,
     addedBy: {
       id: 'u-1',
@@ -73,7 +74,8 @@ export const INITIAL_TRACKS: Track[] = [
     youtubeId: 'B_3v1D4o1t0',
     title: 'Awake',
     artist: 'Tycho',
-    albumArt: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=800&auto=format&fit=crop&q=85',
+    albumArt: '/artwork/noc-02.svg',
+    artworkId: 'noc-02',
     durationSeconds: 279,
     addedBy: {
       id: 'u-2',
@@ -89,7 +91,8 @@ export const INITIAL_TRACKS: Track[] = [
     youtubeId: 'K7v_F2c-p7s',
     title: 'Circling',
     artist: 'Bonobo',
-    albumArt: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=85',
+    albumArt: '/artwork/noc-03.svg',
+    artworkId: 'noc-03',
     durationSeconds: 348,
     addedBy: {
       id: 'u-3',
@@ -105,7 +108,8 @@ export const INITIAL_TRACKS: Track[] = [
     youtubeId: '9vMh5E6u5q4',
     title: 'Baby',
     artist: 'Four Tet',
-    albumArt: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop&q=85',
+    albumArt: '/artwork/noc-01.svg',
+    artworkId: 'noc-01',
     durationSeconds: 264,
     addedBy: {
       id: 'u-4',
@@ -121,7 +125,8 @@ export const INITIAL_TRACKS: Track[] = [
     youtubeId: 'M2d4s7v8x9a',
     title: 'Good Lies',
     artist: 'Overmono',
-    albumArt: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&auto=format&fit=crop&q=85',
+    albumArt: '/artwork/noc-02.svg',
+    artworkId: 'noc-02',
     durationSeconds: 228,
     addedBy: {
       id: 'u-5',
@@ -146,8 +151,9 @@ export const FEATURED_ROOMS: Room[] = [
     isPrivate: false,
     mode: 'collaborative',
     currentTrackId: 'tr-1',
-    ambientColor: '#B99AFF',
-    accentColor: '#B99AFF',
+    artworkId: 'noc-01',
+    ambientColor: '#A0B7A8',
+    accentColor: '#A0B7A8',
   },
   {
     id: 'room-nordic-solitude',
@@ -160,8 +166,9 @@ export const FEATURED_ROOMS: Room[] = [
     isPrivate: false,
     mode: 'host-curated',
     currentTrackId: 'tr-2',
-    ambientColor: '#FF806B',
-    accentColor: '#FF806B',
+    artworkId: 'noc-02',
+    ambientColor: '#E8E4D9',
+    accentColor: '#E8E4D9',
   },
   {
     id: 'room-berlin-basement',
@@ -174,8 +181,9 @@ export const FEATURED_ROOMS: Room[] = [
     isPrivate: false,
     mode: 'collaborative',
     currentTrackId: 'tr-3',
-    ambientColor: '#D4F36A',
-    accentColor: '#D4F36A',
+    artworkId: 'noc-03',
+    ambientColor: '#A65D45',
+    accentColor: '#A65D45',
   },
 ];
 
