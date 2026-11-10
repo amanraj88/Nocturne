@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import Head from 'next/head';
-import { useRouter } from 'next/router';
 import { useLounge } from '@/context/LoungeContext';
 import { VinylStage } from '@/components/lounge/VinylStage';
 import { PlaybackDeck } from '@/components/lounge/PlaybackDeck';
@@ -10,7 +9,6 @@ import { SearchModal } from '@/components/lounge/SearchModal';
 import { Disc3, Users, Radio } from 'lucide-react';
 
 export default function RoomPage() {
-  const router = useRouter();
   const { currentRoom } = useLounge();
   const [mobileTab, setMobileTab] = useState<'stage' | 'queue' | 'social'>('stage');
   const [desktopSideTab, setDesktopSideTab] = useState<'queue' | 'social'>('queue');
@@ -59,7 +57,7 @@ export default function RoomPage() {
                   }`}
                 >
                   <Disc3 className="w-3.5 h-3.5 text-mineral" />
-                  <span>Shared Queue</span>
+                  <span>Tracklist</span>
                 </button>
                 <button
                   type="button"
@@ -71,7 +69,7 @@ export default function RoomPage() {
                   }`}
                 >
                   <Users className="w-3.5 h-3.5 text-mineral" />
-                  <span>People & Notes</span>
+                  <span>Lounge Notes</span>
                 </button>
               </div>
 
@@ -99,7 +97,7 @@ export default function RoomPage() {
             }`}
           >
             <Radio className="w-3 h-3" />
-            <span>Artwork Stage</span>
+            <span>Stage</span>
           </button>
           <button
             type="button"
@@ -111,7 +109,7 @@ export default function RoomPage() {
             }`}
           >
             <Disc3 className="w-3 h-3" />
-            <span>Queue</span>
+            <span>Tracklist</span>
           </button>
           <button
             type="button"
@@ -123,7 +121,7 @@ export default function RoomPage() {
             }`}
           >
             <Users className="w-3 h-3" />
-            <span>People & Notes</span>
+            <span>Notes</span>
           </button>
         </div>
 

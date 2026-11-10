@@ -14,6 +14,8 @@ import {
 
 export const PlaybackDeck: React.FC = () => {
   const {
+    currentRoom,
+    currentTrack,
     isPlaying,
     togglePlay,
     skipTrack,
@@ -30,10 +32,12 @@ export const PlaybackDeck: React.FC = () => {
     sendChatMessage(`felt: ${label}`);
   };
 
+  const catalogMark = (currentTrack.artworkId || currentRoom.artworkId || 'noc-01').toUpperCase();
+
   return (
     <footer className="relative w-full border-t border-graphite bg-carbon/95 backdrop-blur-md px-3 sm:px-6 py-2.5 sm:py-3.5">
       <div className="mx-auto max-w-7xl flex flex-col sm:flex-row items-center justify-between gap-2.5 sm:gap-6">
-        {/* Left: Atmospheric Reaction Signals */}
+        {/* Left: Atmospheric Reaction Signals (Desktop) / Release Mark (Mobile) */}
         <div className="hidden sm:flex items-center gap-2 order-2 sm:order-1">
           <span className="text-xs text-ash mr-1 hidden lg:inline font-sans font-medium">
             Signal:
@@ -64,20 +68,19 @@ export const PlaybackDeck: React.FC = () => {
           </button>
         </div>
 
-        {/* Center: Tactile Playback Transport Buttons (Responsive for Mobile & Desktop) */}
-        <div className="w-full sm:w-auto flex items-center justify-between sm:justify-center gap-3 sm:gap-6 order-1 sm:order-2">
-          {/* Mobile Network Sync Pill */}
-          <div className="flex sm:hidden items-center gap-1.5 text-xs text-ash">
-            <span className={`w-1.5 h-1.5 rounded-full ${isPlaying ? 'bg-mineral animate-pulse' : 'bg-ash/50'}`} />
-            <span className="font-sans text-[10px]">Sync ±<span className="font-mono">{driftMs}</span>ms</span>
+        {/* Center: Tactile Playback Transport Buttons */}
+        <div className="w-full sm:w-auto flex items-center justify-between sm:justify-center gap-2 sm:gap-6 order-1 sm:order-2 px-1 sm:px-0">
+          {/* Mobile Release Monogram (Replaces duplicate sync pill) */}
+          <div className="flex sm:hidden items-center gap-1 text-xs font-mono text-ash shrink-0">
+            <span>[{catalogMark}]</span>
           </div>
 
-          {/* Transport Core */}
-          <div className="flex items-center gap-4 sm:gap-6">
+          {/* Transport Controls Core */}
+          <div className="flex items-center gap-3 sm:gap-6">
             <button
               type="button"
               onClick={previousTrack}
-              className="p-1.5 sm:p-2 text-ash hover:text-warm-bone transition-colors rounded-full hover:bg-graphite/40"
+              className="p-1 sm:p-2 text-ash hover:text-warm-bone transition-colors rounded-full hover:bg-graphite/40"
               aria-label="Previous track"
             >
               <SkipBack className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -86,7 +89,7 @@ export const PlaybackDeck: React.FC = () => {
             <button
               type="button"
               onClick={togglePlay}
-              className={`flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full transition-transform active:scale-95 shadow-md ${
+              className={`flex items-center justify-center w-9 h-9 sm:w-12 sm:h-12 rounded-full transition-transform active:scale-95 shadow-md ${
                 isPlaying
                   ? 'bg-mineral text-deep-ink hover:bg-mineral/90 shadow-glow-mineral'
                   : 'bg-warm-bone text-deep-ink hover:bg-white'
@@ -103,7 +106,7 @@ export const PlaybackDeck: React.FC = () => {
             <button
               type="button"
               onClick={skipTrack}
-              className="p-1.5 sm:p-2 text-ash hover:text-warm-bone transition-colors rounded-full hover:bg-graphite/40"
+              className="p-1 sm:p-2 text-ash hover:text-warm-bone transition-colors rounded-full hover:bg-graphite/40"
               aria-label="Skip to next track"
             >
               <SkipForward className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -111,7 +114,7 @@ export const PlaybackDeck: React.FC = () => {
           </div>
 
           {/* Mobile Local Volume Monitor */}
-          <div className="flex sm:hidden items-center gap-1.5 bg-deep-ink px-2 py-1 rounded-full border border-graphite">
+          <div className="flex sm:hidden items-center gap-1 bg-deep-ink px-1.5 py-1 rounded-full border border-graphite shrink-0">
             <button
               type="button"
               onClick={toggleMute}
@@ -131,7 +134,7 @@ export const PlaybackDeck: React.FC = () => {
               max={100}
               value={isMuted ? 0 : volume}
               onChange={(e) => setVolume(Number(e.target.value))}
-              className="w-12 h-1 bg-graphite rounded-lg appearance-none cursor-pointer accent-mineral"
+              className="w-10 h-1 bg-graphite rounded-lg appearance-none cursor-pointer accent-mineral"
               aria-label="Local monitor volume"
             />
           </div>
@@ -141,7 +144,11 @@ export const PlaybackDeck: React.FC = () => {
         <div className="hidden sm:flex items-center gap-4 order-3 w-auto justify-end">
           {/* Honest Sync Telemetry Pill */}
           <div className="hidden md:flex items-center gap-2 rounded-full bg-deep-ink px-3 py-1 border border-graphite text-xs">
-            <span className={`w-2 h-2 rounded-full ${isPlaying ? 'bg-mineral animate-pulse' : 'bg-ash/50'}`} />
+            <span
+              className={`w-2 h-2 rounded-full ${
+                isPlaying ? 'bg-mineral animate-pulse' : 'bg-ash/50'
+              }`}
+            />
             <span className="font-sans text-ash text-[11px]">
               Sync ±<span className="font-mono">{driftMs}</span>ms
             </span>

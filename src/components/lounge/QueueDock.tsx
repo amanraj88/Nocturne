@@ -6,13 +6,13 @@ import { Plus, Trash2, ArrowUp, Disc3 } from 'lucide-react';
 import { Track } from '@/types';
 
 const TrackThumb: React.FC<{ track: Track; isCurrent: boolean }> = ({ track, isCurrent }) => {
-  const artworkId = track.artworkId || (track.id === 'tr-2' || track.id === 'tr-5' ? 'noc-02' : track.id === 'tr-3' ? 'noc-03' : 'noc-01');
+  const artworkId = track.artworkId || 'noc-01';
 
   return (
-    <div className="relative w-11 h-11 rounded-lg overflow-hidden shrink-0 bg-deep-ink border border-graphite">
+    <div className="relative w-9 h-9 rounded-[2px] overflow-hidden shrink-0 bg-deep-ink border border-graphite">
       <ArtworkRenderer artworkId={artworkId} className="w-full h-full" />
       {isCurrent && (
-        <div className="absolute inset-0 bg-deep-ink/50 backdrop-blur-[1px] flex items-center justify-center">
+        <div className="absolute inset-0 bg-deep-ink/40 flex items-center justify-center">
           <span className="w-2 h-2 rounded-full bg-mineral animate-pulse" />
         </div>
       )}
@@ -25,15 +25,15 @@ export const QueueDock: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full bg-carbon/50 border-l border-graphite">
-      {/* Header */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-graphite">
+      {/* Editorial Tracklist Header */}
+      <div className="flex items-center justify-between px-4 py-3.5 border-b border-graphite">
         <div className="flex items-center gap-2">
           <Disc3 className="w-4 h-4 text-mineral" />
-          <h2 className="font-display text-sm font-bold text-warm-bone">
-            Shared queue
+          <h2 className="font-display text-sm font-bold text-warm-bone tracking-tight">
+            Tracklist
           </h2>
-          <span className="rounded bg-deep-ink px-2 py-0.5 text-xs font-mono text-ash border border-graphite">
-            {queue.length}
+          <span className="text-ash font-mono text-[11px]">
+            [<span className="font-mono">{queue.length}</span>]
           </span>
         </div>
 
@@ -47,25 +47,35 @@ export const QueueDock: React.FC = () => {
         </button>
       </div>
 
-      {/* Clean Editorial Queue List */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-1.5">
-        {queue.map((track) => {
+      {/* Editorial Vinyl Tracklist Rows */}
+      <div className="flex-1 overflow-y-auto p-3 space-y-1">
+        {queue.map((track, idx) => {
           const isCurrent = track.id === currentTrack.id;
+          const trackIndex = String(idx + 1).padStart(2, '0');
 
           return (
             <div
               key={track.id}
-              className={`group flex items-center justify-between p-2.5 rounded-xl transition-colors ${
+              className={`group flex items-center justify-between p-2 rounded-lg transition-colors border ${
                 isCurrent
-                  ? 'bg-graphite/40 border-l-2 border-mineral border-t border-r border-b border-graphite/60'
-                  : 'hover:bg-carbon/60 border border-transparent hover:border-graphite/40'
+                  ? 'bg-carbon/90 border-graphite shadow-sm'
+                  : 'hover:bg-carbon/60 border-transparent hover:border-graphite/40'
               }`}
             >
-              <div className="flex items-center gap-3 min-w-0 pr-2">
+              <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                {/* Index / Active indicator */}
+                <span className="w-5 shrink-0 text-center text-[11px] font-mono">
+                  {isCurrent ? (
+                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-mineral animate-pulse" />
+                  ) : (
+                    <span className="text-ash/60">{trackIndex}</span>
+                  )}
+                </span>
+
                 <TrackThumb track={track} isCurrent={isCurrent} />
 
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
                     <span
                       className={`text-xs truncate transition-colors ${
                         isCurrent
@@ -75,16 +85,11 @@ export const QueueDock: React.FC = () => {
                     >
                       {track.title}
                     </span>
-                    {isCurrent && (
-                      <span className="text-[10px] font-sans font-medium bg-deep-ink text-mineral border border-mineral/30 rounded px-1.5 py-0.5 shrink-0">
-                        Playing
-                      </span>
-                    )}
                   </div>
-                  <div className="flex items-center gap-1.5 text-xs text-ash/80 mt-0.5">
+                  <div className="flex items-center gap-1.5 text-[11px] text-ash/80 mt-0.5">
                     <span className="truncate">{track.artist}</span>
-                    <span className="text-graphite">/</span>
-                    <span className="truncate text-ash/60">
+                    <span className="text-graphite font-mono">/</span>
+                    <span className="truncate text-ash/60 text-[10px]">
                       via {track.addedBy.name}
                     </span>
                   </div>
@@ -92,7 +97,7 @@ export const QueueDock: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
-                <span className="text-xs font-mono text-ash">
+                <span className="text-[11px] font-mono text-ash">
                   {formatTime(track.durationSeconds)}
                 </span>
 
@@ -130,8 +135,10 @@ export const QueueDock: React.FC = () => {
         {queue.length === 0 && (
           <div className="flex flex-col items-center justify-center p-8 text-center text-ash">
             <Disc3 className="w-8 h-8 mb-2 opacity-30" />
-            <p className="text-xs font-medium text-warm-bone">Queue is empty</p>
-            <p className="text-xs text-ash mt-1">Search and add tracks to begin listening</p>
+            <p className="text-xs font-medium text-warm-bone">Tracklist is empty</p>
+            <p className="text-xs text-ash mt-1">
+              Search and add tracks to begin listening
+            </p>
           </div>
         )}
       </div>

@@ -17,8 +17,8 @@ export const SocialDock: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full bg-carbon/40 border-l border-graphite">
-      {/* Tab Switcher */}
-      <div className="flex items-center border-b border-graphite p-2.5 gap-2">
+      {/* Editorial Tab Switcher */}
+      <div className="flex items-center border-b border-graphite p-2 gap-2">
         <button
           type="button"
           onClick={() => setActiveTab('listeners')}
@@ -29,8 +29,8 @@ export const SocialDock: React.FC = () => {
           }`}
         >
           <Users className="w-3.5 h-3.5 text-mineral" />
-          <span>People</span>
-          <span className="rounded bg-carbon px-1.5 py-0.2 text-[10px] text-ash font-mono border border-graphite/60">
+          <span>Listeners</span>
+          <span className="rounded bg-carbon px-1.5 py-0.5 text-[10px] text-ash font-mono border border-graphite/60">
             {members.length}
           </span>
         </button>
@@ -45,8 +45,8 @@ export const SocialDock: React.FC = () => {
           }`}
         >
           <MessageSquare className="w-3.5 h-3.5 text-mineral" />
-          <span>Chat</span>
-          <span className="rounded bg-carbon px-1.5 py-0.2 text-[10px] text-ash font-mono border border-graphite/60">
+          <span>Lounge Notes</span>
+          <span className="rounded bg-carbon px-1.5 py-0.5 text-[10px] text-ash font-mono border border-graphite/60">
             {chatMessages.length}
           </span>
         </button>
@@ -55,18 +55,22 @@ export const SocialDock: React.FC = () => {
       {/* Tab Content */}
       <div className="flex-1 overflow-y-auto p-4">
         {activeTab === 'listeners' ? (
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <div className="text-xs font-medium text-ash mb-3 flex items-center justify-between">
               <span>Present in lounge</span>
-              <span className="font-sans text-[11px] font-medium text-mineral">Live</span>
+              <span className="font-sans text-[11px] font-medium text-mineral flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-mineral animate-pulse" />
+                Live
+              </span>
             </div>
+
             {members.map((user) => (
               <div
                 key={user.id}
-                className="flex items-center justify-between p-2 rounded-xl hover:bg-carbon/60 transition-colors border border-transparent hover:border-graphite/40"
+                className="flex items-center justify-between p-2 rounded-lg hover:bg-carbon/60 transition-colors border border-transparent hover:border-graphite/40"
               >
-                <div className="flex items-center gap-3">
-                  <div className="relative w-8 h-8 rounded-full overflow-hidden shrink-0 border border-graphite">
+                <div className="flex items-center gap-2.5">
+                  <div className="relative w-7 h-7 rounded-full overflow-hidden shrink-0 border border-graphite">
                     <Image
                       src={user.avatar}
                       alt={user.name}
@@ -83,27 +87,27 @@ export const SocialDock: React.FC = () => {
                         <Crown className="w-3 h-3 text-mineral" />
                       )}
                     </div>
-                    <span className="text-[11px] text-ash capitalize">
-                      {user.role} · Joined {user.joinedAt}
+                    <span className="text-[10px] text-ash capitalize">
+                      {user.role} · Joined <span className="font-mono">{user.joinedAt}</span>
                     </span>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1.5 bg-deep-ink px-2 py-0.5 rounded-full border border-graphite text-[11px] font-sans font-medium text-mineral">
-                  <span className="w-1.5 h-1.5 rounded-full bg-mineral animate-pulse" />
-                  <span>Sync</span>
+                <div className="flex items-center gap-1 text-[10px] font-sans text-ash/80">
+                  <span className="w-1.5 h-1.5 rounded-full bg-mineral/70" />
+                  <span>active</span>
                 </div>
               </div>
             ))}
           </div>
         ) : (
           <div className="flex flex-col h-full justify-between">
-            {/* Messages Stream */}
-            <div className="space-y-2.5 overflow-y-auto pr-1">
+            {/* Editorial Notes Stream (Transcript Style) */}
+            <div className="space-y-3 overflow-y-auto pr-1">
               {chatMessages.map((msg) => (
                 <div
                   key={msg.id}
-                  className="rounded-xl bg-deep-ink/60 p-3 border border-graphite/60 space-y-1"
+                  className="border-b border-graphite/30 pb-2.5 space-y-1"
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-medium text-mineral">
@@ -113,15 +117,18 @@ export const SocialDock: React.FC = () => {
                       {msg.timestamp}
                     </span>
                   </div>
-                  <p className="text-xs text-warm-bone/90 leading-relaxed">
+                  <p className="text-xs text-warm-bone/90 leading-relaxed font-sans">
                     {msg.text}
                   </p>
                 </div>
               ))}
             </div>
 
-            {/* Input Bar */}
-            <form onSubmit={handleSend} className="mt-3 flex items-center gap-2 pt-2 border-t border-graphite">
+            {/* Note Input Bar */}
+            <form
+              onSubmit={handleSend}
+              className="mt-3 flex items-center gap-2 pt-2 border-t border-graphite"
+            >
               <input
                 type="text"
                 value={chatInput}

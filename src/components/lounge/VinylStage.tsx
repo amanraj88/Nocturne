@@ -4,7 +4,7 @@ import { useLounge } from '@/context/LoungeContext';
 import { AudioVisualizer } from './AudioVisualizer';
 import { ArtworkRenderer } from '@/components/artwork';
 import { formatTime } from '@/lib/utils';
-import { Disc3, Heart, Share2, Radio, Check } from 'lucide-react';
+import { Disc3, Heart, Share2, Check } from 'lucide-react';
 
 export const VinylStage: React.FC = () => {
   const {
@@ -38,69 +38,97 @@ export const VinylStage: React.FC = () => {
 
   // Determine artwork identifier based on current track or room
   const activeArtworkId = currentTrack.artworkId || currentRoom.artworkId || 'noc-01';
+  const catalogMark = activeArtworkId.toUpperCase();
 
-  // Spindle label color based on room identity
-  const spindleColorClass =
+  // Spindle label styling matched to room identity
+  const spindleAccentClass =
     activeArtworkId === 'noc-03'
-      ? 'border-oxide/60 text-oxide'
+      ? 'border-oxide/70 text-oxide'
       : activeArtworkId === 'noc-02'
-      ? 'border-warm-bone/60 text-warm-bone'
-      : 'border-mineral/60 text-mineral';
+      ? 'border-warm-bone/70 text-warm-bone'
+      : 'border-mineral/70 text-mineral';
 
   return (
-    <div className="relative flex flex-col items-center justify-center p-3 sm:p-8 lg:p-10 w-full max-w-full mx-auto overflow-hidden">
-      {/* Restrained Ambient Backglow */}
+    <div className="relative flex flex-col items-center justify-center py-4 px-3 sm:py-8 sm:px-6 lg:py-10 lg:px-8 w-full max-w-full mx-auto overflow-hidden">
+      {/* Restrained Acoustic Backglow */}
       {quality !== 'off' && (
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 ambient-glow opacity-50"
+          className="pointer-events-none absolute inset-0 ambient-glow opacity-40"
         />
       )}
 
-      {/* Main Sleeve & Vinyl Showcase */}
       <div className="relative z-10 w-full flex flex-col items-center">
-        {/* Vinyl & Sleeve Container */}
-        <div className="relative w-full max-w-[240px] sm:max-w-[340px] lg:max-w-[390px] aspect-square mb-5 sm:mb-8">
-          {/* Physical 180g Vinyl Record Peeking Behind */}
+        {/* Release Metadata Header */}
+        <div className="flex items-center gap-2 mb-3 sm:mb-4 text-ash">
+          <span className="font-mono text-xs text-ash">
+            [{catalogMark}]
+          </span>
+          <span className="text-graphite font-mono hidden sm:inline">/</span>
+          <span className="font-sans text-xs text-ash font-medium hidden sm:inline">
+            12&quot; 180g master
+          </span>
+          <span className="text-graphite font-mono">/</span>
+          <span className="font-sans text-xs text-mineral flex items-center gap-1 font-medium">
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${
+                isPlaying ? 'bg-mineral animate-pulse' : 'bg-ash/50'
+              }`}
+            />
+            {isPlaying ? 'Live stream' : 'Standby'}
+          </span>
+        </div>
+
+        {/* 12" Vinyl Sleeve & Peeking Record Stage */}
+        <div className="relative w-full max-w-[260px] sm:max-w-[340px] md:max-w-[400px] lg:max-w-[430px] xl:max-w-[460px] aspect-square mb-5 sm:mb-8">
+          {/* Physical 180g Heavyweight Vinyl Disc */}
           <div
-            className={`absolute top-1 sm:top-2 -right-3.5 sm:-right-7 lg:-right-9 w-[92%] h-[92%] rounded-full bg-carbon border border-graphite flex items-center justify-center transition-transform duration-700 ease-out ${
-              isPlaying ? 'translate-x-2.5 sm:translate-x-6 lg:translate-x-8' : 'translate-x-0'
+            className={`absolute top-1.5 -right-3 sm:-right-8 lg:-right-12 w-[92%] h-[92%] rounded-full bg-deep-ink border border-graphite/80 flex items-center justify-center transition-transform duration-700 ease-out shadow-md ${
+              isPlaying
+                ? 'translate-x-2 sm:translate-x-8 lg:translate-x-12'
+                : 'translate-x-0'
             }`}
             aria-hidden="true"
           >
-            {/* Concentric Vinyl Micro-Grooves */}
-            <div className="w-[84%] h-[84%] rounded-full border border-graphite/40 flex items-center justify-center">
-              <div className="w-[68%] h-[68%] rounded-full border border-graphite/30 flex items-center justify-center">
-                {/* Center Spindle Label */}
-                <div
-                  className={`w-[40%] h-[40%] rounded-full bg-carbon border ${spindleColorClass} flex items-center justify-center ${
-                    isPlaying && quality !== 'off' ? 'animate-vinyl-spin' : ''
-                  }`}
-                >
-                  <Disc3 className="w-5 h-5 opacity-90" />
+            {/* Outer Vinyl Edge & Run-In Groove Lip */}
+            <div className="w-[96%] h-[96%] rounded-full border border-graphite/40 flex items-center justify-center bg-carbon/60">
+              {/* Play Surface Micro-Grooves */}
+              <div className="w-[84%] h-[84%] rounded-full border border-graphite/30 flex items-center justify-center bg-carbon/90">
+                {/* Dead-Wax Run-Out Zone */}
+                <div className="w-[56%] h-[56%] rounded-full border border-graphite/40 flex items-center justify-center bg-deep-ink">
+                  {/* Center Spindle Label (33⅓ RPM) */}
+                  <div
+                    className={`w-[52%] h-[52%] rounded-full bg-carbon border ${spindleAccentClass} flex flex-col items-center justify-center p-1 relative shadow-inner ${
+                      isPlaying && quality !== 'off' ? 'animate-vinyl-spin' : ''
+                    }`}
+                  >
+                    <span className="font-mono text-xs opacity-90 font-semibold">
+                      {catalogMark}
+                    </span>
+                    <span className="font-sans text-[10px] text-ash font-medium mt-0.5">
+                      33⅓ rpm
+                    </span>
+                    {/* Spindle Center Hole */}
+                    <div className="w-2 h-2 rounded-full bg-deep-ink border border-graphite/80 mt-1" />
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Physical Album Sleeve Master Frame */}
-          <div className="relative z-10 w-full h-full rounded-2xl overflow-hidden bg-deep-ink border border-graphite">
-            {/* Subtle Spine Relief Line */}
-            <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-graphite/60 z-20 pointer-events-none" />
+          {/* Physical 12" Cardboard Sleeve Master Frame */}
+          <div className="relative z-10 w-full h-full rounded-[2px] overflow-hidden bg-deep-ink border border-graphite/90 shadow-md">
+            {/* Authentic Sleeve Spine Relief with subtle edge highlight */}
+            <div className="absolute left-0 top-0 bottom-0 w-[4px] bg-gradient-to-r from-graphite to-carbon/40 z-20 pointer-events-none" />
+            <div className="absolute left-[4px] top-0 bottom-0 w-[1px] bg-graphite/40 z-20 pointer-events-none" />
 
-            {/* Approved Dynamic Vector Artwork */}
-            <div className="w-full h-full transition-opacity duration-500">
+            {/* Approved Dynamic Vector Artwork — Unobstructed */}
+            <div className="w-full h-full">
               <ArtworkRenderer artworkId={activeArtworkId} />
             </div>
 
-            {/* Live Room / Broadcast Badge */}
-            <div className="absolute top-3 left-3 sm:top-4 sm:left-4 z-20 flex items-center gap-1.5 rounded-full bg-deep-ink/90 backdrop-blur-md px-2.5 sm:px-3 py-1 border border-graphite text-[11px] sm:text-xs text-ash">
-              <span className={`w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full ${isPlaying ? 'bg-mineral animate-pulse' : 'bg-ash/50'}`} />
-              <span className="font-sans font-medium">{isPlaying ? 'Now playing' : 'Paused'}</span>
-            </div>
-
-            {/* Quick Actions (Favorite & Share) */}
-            <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-20 flex items-center gap-1.5 sm:gap-2">
+            {/* Subtle Floating Actions (Top-Right) */}
+            <div className="absolute top-2.5 right-2.5 sm:top-3.5 sm:right-3.5 z-20 flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => setIsLiked(!isLiked)}
@@ -119,49 +147,45 @@ export const VinylStage: React.FC = () => {
                 className="p-1.5 sm:p-2 rounded-full bg-deep-ink/80 text-ash border border-graphite hover:text-warm-bone hover:border-mineral/50 backdrop-blur-md transition-colors"
                 aria-label="Share lounge link"
               >
-                {copiedToast ? <Check className="w-3.5 h-3.5 text-mineral" /> : <Share2 className="w-3.5 h-3.5" />}
+                {copiedToast ? (
+                  <Check className="w-3.5 h-3.5 text-mineral" />
+                ) : (
+                  <Share2 className="w-3.5 h-3.5" />
+                )}
               </button>
-            </div>
-
-            {/* Contributor Pill */}
-            <div className="absolute bottom-3 left-3 right-3 sm:bottom-4 sm:left-4 sm:right-4 z-20 flex items-center justify-between rounded-xl bg-deep-ink/90 backdrop-blur-md px-3 py-1.5 sm:px-3.5 sm:py-2 border border-graphite text-xs">
-              <div className="flex items-center gap-2 min-w-0">
-                <div className="relative w-4 h-4 sm:w-5 sm:h-5 rounded-full overflow-hidden shrink-0 border border-graphite">
-                  <Image
-                    src={currentTrack.addedBy.avatar}
-                    alt={currentTrack.addedBy.name}
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-                <span className="text-[11px] sm:text-xs text-ash truncate">
-                  Queued by <span className="text-warm-bone font-medium">{currentTrack.addedBy.name}</span>
-                </span>
-              </div>
-              <span className="text-[11px] sm:text-xs text-ash font-mono shrink-0">
-                {currentTrack.addedAt}
-              </span>
             </div>
           </div>
         </div>
 
-        {/* Track Typography & Hierarchy */}
-        <div className="w-full text-center space-y-1 mb-4 sm:mb-6 max-w-xl px-2">
-          <h1 className="font-display text-xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-warm-bone leading-tight">
+        {/* Release Typographic Block (Title, Artist & Liner Attribution) */}
+        <div className="w-full text-center space-y-1 mb-5 sm:mb-6 max-w-xl px-2">
+          <h1 className="font-display text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-warm-bone leading-tight">
             {currentTrack.title}
           </h1>
-          <p className="font-sans text-xs sm:text-base font-medium text-ash">
+          <p className="font-sans text-sm sm:text-base font-medium text-ash">
             {currentTrack.artist}
           </p>
+          <div className="flex items-center justify-center gap-2 text-xs text-ash/80 pt-1">
+            <span className="truncate">
+              Queued by{' '}
+              <span className="text-warm-bone font-medium">
+                {currentTrack.addedBy.name}
+              </span>
+            </span>
+            <span className="text-graphite font-mono">·</span>
+            <span className="font-mono text-[11px] text-ash shrink-0">
+              {currentTrack.addedAt}
+            </span>
+          </div>
         </div>
 
-        {/* Playback State Monitor (Technically Honest Harmonic Stream Monitor) */}
-        <div className="w-full max-w-[280px] sm:max-w-md mb-3 sm:mb-4 px-1 sm:px-2">
-          <AudioVisualizer lineCount={36} />
+        {/* Acoustic Harmonic Amplitude Monitor */}
+        <div className="w-full max-w-[280px] sm:max-w-md mb-2 sm:mb-3 px-1 sm:px-2">
+          <AudioVisualizer lineCount={44} />
         </div>
 
-        {/* Scrubber & Sync Status */}
-        <div className="w-full max-w-[280px] sm:max-w-md space-y-1.5 sm:space-y-2 px-1 sm:px-2">
+        {/* Console Scrubber Strip */}
+        <div className="w-full max-w-[280px] sm:max-w-md space-y-2 px-1 sm:px-2">
           <div className="relative flex items-center">
             <input
               type="range"
@@ -170,14 +194,20 @@ export const VinylStage: React.FC = () => {
               step={0.1}
               value={progressPercent}
               onChange={handleScrubberChange}
-              className="w-full h-1.5 bg-carbon rounded-lg appearance-none cursor-pointer accent-mineral border border-graphite/40"
-              aria-label="Track progress"
+              className="w-full h-1.5 bg-carbon rounded-none appearance-none cursor-pointer accent-mineral border border-graphite/60"
+              aria-label="Track playback progress"
             />
           </div>
           <div className="flex items-center justify-between text-xs text-ash px-0.5">
-            <span className="font-mono text-warm-bone">{formatTime(progressSeconds)}</span>
+            <span className="font-mono text-warm-bone text-[11px] sm:text-xs">
+              {formatTime(progressSeconds)}
+            </span>
             <div className="flex items-center gap-1.5 text-xs">
-              <span className={`w-1.5 h-1.5 rounded-full ${isPlaying ? 'bg-mineral' : 'bg-ash/50'}`} />
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  isPlaying ? 'bg-mineral animate-pulse' : 'bg-ash/50'
+                }`}
+              />
               <span className="font-sans text-ash text-[11px]">
                 {isPlaying ? (
                   <>
@@ -188,7 +218,9 @@ export const VinylStage: React.FC = () => {
                 )}
               </span>
             </div>
-            <span className="font-mono text-warm-bone">{formatTime(durationSeconds)}</span>
+            <span className="font-mono text-warm-bone text-[11px] sm:text-xs">
+              {formatTime(durationSeconds)}
+            </span>
           </div>
         </div>
       </div>

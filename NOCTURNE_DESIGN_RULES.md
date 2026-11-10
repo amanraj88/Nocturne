@@ -1,133 +1,84 @@
-# NOCTURNE — Permanent Design Rules & Anti-Slop System
+# NOCTURNE — Visual Identity & Creative Direction Rules
 
-> **Philosophy**: NOCTURNE is an intimate after-hours collaborative listening lounge, an independent vinyl record label, and an editorial publication. It is **never** a SaaS dashboard, an AI-generated template, or a generic gadget.
+**Version:** 1.0  
+**Status:** Creative Direction Established & Active
+
+## 1. Brand Positioning & Core Concept
+NOCTURNE is an independent electronic music culture-inspired social listening platform.
+- **Tagline:** Music hits different together.
+- **Core Idea:** A digital space where sound becomes visual culture and listening becomes a shared experience.
+- The product feels like an independent record project and curated vinyl room, not a conventional SaaS streaming dashboard with dark mode.
 
 ---
 
-## 1. Visual Identity & Design Tokens
-
-All colors, typography, surfaces, and spacing are bound by CSS custom properties declared in `:root` inside `src/styles/globals.css`. Hardcoded hex codes, arbitrary tailwind color utilities (e.g. `zinc-500`, `purple-600`), and raw pixel sizes outside the token scale are strictly forbidden.
-
-### Color Tokens
+## 2. Foundations: Mineral / Oxide Colour System
 
 ```css
 :root {
-  /* Foundations */
-  --color-obsidian: #09080E;         /* Deepest abyss ground */
-  --color-plum-base: #12101A;        /* Primary section ground */
-  --color-plum-surface: #191624;     /* Elevated listening decks and containers */
-  --color-plum-subtle: #242033;      /* Dividers, hairline borders, muted rails */
+  /* Core Atmosphere */
+  --color-deep-ink: #101514;       /* Deepest obsidian/slate base */
+  --color-carbon: #191E1B;         /* Elevated surfaces, docks, transport */
+  --color-graphite: #292E2A;       /* Subtle dividers, sleeve borders, rails */
+  --color-graphite-subtle: #202622;/* De-emphasized hairline boundaries */
 
   /* Typographic Ink */
-  --color-ivory: #F7F5F0;            /* Warm ivory — all primary headings and active titles */
-  --color-warm-grey: #A39DAF;        /* Muted warm grey — secondary text, artist credits, descriptions */
-  --color-dim-grey: #6E687A;         /* Tertiary captions, timestamps, quiet metadata */
+  --color-warm-bone: #E8E4D9;      /* Primary editorial display & titles */
+  --color-ash: #92958B;            /* Secondary metadata, subtitles, labels */
+  --color-ash-dim: #62665D;        /* Timestamps, de-emphasized captions */
 
-  /* Singular Restrained Accents */
-  --color-lavender: #B99AFF;         /* Principal interactive accent: active states, focus rings, play button */
-  --color-lavender-subtle: rgba(185, 154, 255, 0.12); /* Subtle hover fill */
-  --color-coral: #FF806B;            /* Meaningful urgency: active skip votes, destructive action */
-  --color-coral-subtle: rgba(255, 128, 107, 0.12);
-  --color-green: #38D39F;            /* Real sync and online connection states ONLY */
-  
-  /* Hairline and Borders */
-  --border-hairline: rgba(185, 154, 255, 0.10);
-  --border-focus: #B99AFF;
+  /* Signal Accents */
+  --color-mineral: #A0B7A8;        /* Primary interaction accent, sync, active play */
+  --color-mineral-subtle: rgba(160, 183, 168, 0.12);
+  --color-mineral-glow: rgba(160, 183, 168, 0.22);
 
-  /* Typography */
-  --font-serif: 'Cinzel', serif;
-  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-telemetry: 'Space Grotesk', monospace; /* Restricted strictly to actual numerical figures */
+  --color-oxide: #A65D45;          /* Artwork expressive accent, skip votes, mute alert */
+  --color-oxide-subtle: rgba(166, 93, 69, 0.12);
 }
 ```
 
-### Color Usage Mandates
-- **No decorative yellow/lime**: Lime/chartreuse is banned as arbitrary decoration.
-- **Never color individual heading words randomly**: Headings are set in solid `--color-ivory`. Never one purple or gradient word.
-- **Green is reserved strictly for genuine connection state**: Never used as a generic decorative badge.
-- **No purple-to-blue or rainbow gradients**: Atmospheric depth is created with physical opacity, tonal contrast, and subtle photographic lighting.
+### Contrast Rules
+- **Warm Bone on Deep Ink:** 13.2:1 (exceeds AAA for normal text).
+- **Mineral on Deep Ink:** 8.1:1 (exceeds AAA for normal text).
+- **Ash on Deep Ink:** 5.7:1 (exceeds AA for normal text).
+- **Oxide:** Restricted to artwork compositions, active skip vote indicators, and non-text visual accents where contrast is not relied on for body reading.
 
 ---
 
-## 2. Typography Rules
+## 3. Typographic System
 
-1. **Two primary font families only**:
-   - Display: *Cinzel* (or editorial serif) for main headlines and titles.
-   - Body & Controls: *Inter* for body text, button labels, navigation, captions, and track metadata.
-   - Numeric figures: *Space Grotesk* used **only** for real numerical values (track timestamps, durations, volume percentage).
-2. **The Eyebrow Ban (Hallmark Gate 54 & 67)**:
-   - **Never** place an all-caps, tracked micro-label directly above an H1, H2, or H3.
-   - Headlines speak for themselves. If context is needed, incorporate it into the headline or section narrative.
-3. **No Monospace as Costume (Hallmark Gate 64)**:
-   - Monospace is forbidden on labels, categories, chips, bylines, or body descriptions.
-   - Use body face at normal case, optical sizing, and standard letter spacing.
-4. **No Tracked Capitals (Hallmark Gate 67)**:
-   - Labels under 16px must be set in sentence case or natural title case, untracked (no `tracking-[0.2em]`).
-5. **No Em-dash (—) Crutch**:
-   - Punctuate naturally with commas, colons, or clean line breaks.
+| Role | Font Family | Weights | Use Cases |
+| :--- | :--- | :--- | :--- |
+| **Display Headings** | `Syne` (`font-display`) | 700, 800 | Room titles, track hero headlines, release artwork titles |
+| **Interface / Body** | `Inter` (`font-sans`) | 400, 500, 600 | Navigation, descriptions, buttons, chat notes, artist names |
+| **Telemetry / Digits**| `JetBrains Mono` (`font-mono`) | 400, 500 | Strictly numbers, timestamps (`02:14`), catalog codes (`NOC-01`), drift values (`14`) |
+
+> **Hallmark Reflex 64 Rule:** `font-mono` must NEVER be applied to mixed text containing words (e.g., `SYNC ±14MS`). Labels and units must use `font-sans`; apply `font-mono` exclusively to numeric digits: `Sync ±<span className="font-mono">{driftMs}</span>ms`.
 
 ---
 
-## 3. Surface & Structural Rules
+## 4. Physical Artefact & Artwork Direction
 
-1. **Reduce container nesting (Hallmark Gate 4)**:
-   - **Never** place a card inside a card. One structural containment layer per functional section.
-2. **Elevate by lightness, not by border clutter**:
-   - Avoid piling border + glow + backdrop-blur + drop-shadow simultaneously (Hallmark Gate F24).
-   - Commit to either a crisp hairline border or soft tonal elevation.
-3. **No arbitrary rounded pills**:
-   - Reserved strictly for actual interactive buttons or explicit status chips.
-4. **Asymmetrical, varied layouts (Hallmark Gate 3 & 8)**:
-   - Avoid 3 or 4 identical card grids stamped across the screen.
-   - Vary measure, alignment, and scale between sections.
-5. **Viewport bounds (Hallmark Gate 6a & 34)**:
-   - Use `dvh` or `svh` for viewport heights (never `vh`).
-   - `overflow-x: clip` on both `html` and `body` (never `hidden`).
-
----
-
-## 4. Motion & Animation Rules
-
-1. **Meaningful reaction only**:
-   - Motion occurs in response to human touch or music playback state changes (play/pause).
-   - No gratuitous perpetual pinging rings, floating bubbles, or bouncing cards.
-2. **No `transition: all` (Hallmark Gate 10a)**:
-   - Explicitly declare properties: `transition-colors`, `transition-opacity`, or `transition-transform`.
-   - Never animate layout properties (`width`, `height`, `top`, `left`, `margin`, `padding`).
-3. **Card hover discipline (Hallmark Gate 11)**:
-   - Do not scale/zoom photographs on card hover (`group-hover:scale-105` is banned).
-   - Hover feedback belongs to the card container border or subtle background shift.
-4. **Reduced Motion mandatory (Hallmark Gate 27)**:
-   - Every animation and transition must strictly respect `prefers-reduced-motion: reduce`.
-   - The global quality engine (`high`/`low`/`off`) must continue to completely deactivate non-essential motion.
+1. **Original Artwork Only:**
+   - **NOC-01 Shibuya Reverie:** Horizontal frequency ribbons, central moiré aperture, tape-shear displacement.
+   - **NOC-02 Reykjavik Echoes:** Glacial topographic contours, diagonal escarpment, harmonic negative space.
+   - **NOC-03 Kreuzberg Velvet:** Industrial concrete monolith, 12×24 halftone dot matrix, cantilever oxide beam.
+   - Pure local vector SVG with zero external CDN dependencies.
+2. **Vinyl Sleeve Presentation:**
+   - 12" dense cardboard sleeve with precision softened corners (`rounded-[2px]`), authentic spine relief, and uncrowded artwork.
+   - Peeking 180g vinyl record with micro-grooves, spindle label, and smooth rotation on active playback.
+   - Never obstruct the artwork with heavy UI cards or redundant badges.
+3. **Technically Honest Playback & Telemetry:**
+   - Never fabricate FFT spectrum analysis from iframe streams.
+   - Honest harmonic amplitude monitors reflect playback activity without claiming raw frequency decomposition.
+   - Real, client-independent local volume monitor.
 
 ---
 
-## 5. Authenticity & Content Integrity (Hallmark Gate 46a & 70)
+## 5. Anti-Slop Audit Checklist (Hallmark Standards)
 
-1. **Never fabricate live listener counts or fake activity**:
-   - Rooms in prototype mode must be clearly and honestly marked: "Sample Room · Demo".
-   - Do not print fake metrics like `±14ms sync` or `38 listeners online` unless powered by real telemetry.
-2. **No decorative middle-dot strings (Hallmark Gate 63)**:
-   - Avoid `NOCTURNE · LISTENING · SYNC · LOUNGE` style repeated middle-dot marquees.
-3. **No emoji icons (Hallmark Gate 30a)**:
-   - Icons must come from Lucide SVG icons with proper accessibility labels. Emojis in UI buttons are forbidden.
-4. **No fake form submission confirmations**:
-   - Modals and actions clearly indicate prototype behavior without deceptive fake success states.
-
----
-
-## 6. The Hallmark Anti-Slop Audit Checklist
-
-Run before any release:
-- [ ] No `transition: all` anywhere in CSS or JSX.
-- [ ] No uppercase micro-eyebrows above headings.
-- [ ] No `tracking-widest` or `tracking-[0.2em]` on small text.
-- [ ] No `font-mono` on non-numerical labels.
-- [ ] No cards inside cards.
-- [ ] No scaling images on hover.
-- [ ] No arbitrary yellow or multi-colored text words in headings.
-- [ ] All interactive elements have `:focus-visible` with 3:1 contrast.
-- [ ] Canvas visualizer has `aria-hidden="true"`.
-- [ ] Zero hardcoded hex colors outside `:root`.
-- [ ] `overflow-x: clip` applied to `html` and `body`.
+- [x] Zero hardcoded color literals outside CSS variables / design tokens.
+- [x] No `transition-all` on interactive buttons; specify `transition-transform`, `transition-colors`, or `transition-opacity`.
+- [x] No nested card-in-card containers.
+- [x] No uppercase letter-spacing on tiny body text without purpose.
+- [x] `overflow-x: clip` on `html`, `body`, and `#next`.
+- [x] Strict adherence to `prefers-reduced-motion` and `data-quality="off"` toggle.
