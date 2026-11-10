@@ -7,9 +7,7 @@ interface VisualizerProps {
 }
 
 /**
- * AudioVisualizer — Technically honest playback state harmonic monitor.
- * Reflects active playback state with dual-wave harmonic oscillation.
- * Does not fabricate FFT frequency telemetry.
+ * Decorative signal trace that follows play/pause state. It is not audio-reactive or an FFT display.
  */
 export const AudioVisualizer: React.FC<VisualizerProps> = ({ className = '', lineCount = 48 }) => {
   const { isPlaying, quality } = useLounge();

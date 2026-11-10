@@ -66,10 +66,6 @@
      Backward-Compatible Aliases (Preserves existing components during Step 1-2)
      ========================================================================= */
   --color-obsidian: var(--color-deep-ink);
-  --color-plum-base: var(--color-deep-ink);
-  --color-plum-surface: var(--color-carbon);
-  --color-plum-subtle: var(--color-graphite);
-
   --color-ivory: var(--color-warm-bone);
   --color-warm-grey: var(--color-ash);
   --color-dim-grey: var(--color-ash-dim);

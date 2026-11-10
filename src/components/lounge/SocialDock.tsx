@@ -1,7 +1,39 @@
 import React, { useState } from 'react';
-import Image from 'next/image';
 import { useLounge } from '@/context/LoungeContext';
 import { Users, MessageSquare, Crown, Send } from 'lucide-react';
+
+const getInitials = (name: string): string => {
+  const clean = name.replace(/[^a-zA-Z\s]/g, '').trim();
+  const parts = clean.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+  }
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+  return 'NO';
+};
+
+const UserSignalBadge: React.FC<{
+  name: string;
+  role: 'host' | 'collaborator' | 'listener';
+}> = ({ name, role }) => {
+  const roleStyles =
+    role === 'host'
+      ? 'bg-deep-ink border-mineral/70 text-mineral'
+      : role === 'collaborator'
+      ? 'bg-deep-ink border-graphite text-ash'
+      : 'bg-deep-ink border-graphite/60 text-ash/70';
+
+  return (
+    <span
+      aria-hidden="true"
+      className={`w-6 h-6 rounded-[2px] border flex items-center justify-center font-sans text-[10px] font-semibold select-none shrink-0 ${roleStyles}`}
+    >
+      {getInitials(name)}
+    </span>
+  );
+};
 
 export const SocialDock: React.FC = () => {
   const { members, chatMessages, sendChatMessage } = useLounge();
@@ -58,26 +90,22 @@ export const SocialDock: React.FC = () => {
           <div className="space-y-1.5">
             <div className="text-xs font-medium text-ash mb-3 flex items-center justify-between">
               <span>Present in lounge</span>
-              <span className="font-sans text-[11px] font-medium text-mineral flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-mineral animate-pulse" />
-                Live
+              <span className="font-sans text-[11px] font-medium text-ash flex items-center gap-1">
+                {members.length === 1 ? '1 listener' : members.length + ' listeners'}
               </span>
             </div>
 
-            {members.map((user) => (
+            {members.length === 0 ? (
+              <p className="rounded-[2px] border border-graphite px-3 py-4 text-center text-xs text-ash">
+                No listeners are here yet. Share the room link to invite someone.
+              </p>
+            ) : members.map((user) => (
               <div
                 key={user.id}
                 className="flex items-center justify-between p-2 rounded-lg hover:bg-carbon/60 transition-colors border border-transparent hover:border-graphite/40"
               >
                 <div className="flex items-center gap-2.5">
-                  <div className="relative w-7 h-7 rounded-full overflow-hidden shrink-0 border border-graphite">
-                    <Image
-                      src={user.avatar}
-                      alt={user.name}
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
+                  <UserSignalBadge name={user.name} role={user.role} />
                   <div>
                     <div className="flex items-center gap-1.5">
                       <span className="text-xs font-medium text-warm-bone">
@@ -104,7 +132,9 @@ export const SocialDock: React.FC = () => {
           <div className="flex flex-col h-full justify-between">
             {/* Editorial Notes Stream (Transcript Style) */}
             <div className="space-y-3 overflow-y-auto pr-1">
-              {chatMessages.map((msg) => (
+              {chatMessages.length === 0 ? (
+                <p className="py-6 text-center text-xs text-ash">No room notes yet. Start the conversation when someone joins.</p>
+              ) : chatMessages.map((msg) => (
                 <div
                   key={msg.id}
                   className="border-b border-graphite/30 pb-2.5 space-y-1"

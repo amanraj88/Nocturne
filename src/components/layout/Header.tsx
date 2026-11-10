@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useLounge } from '@/context/LoungeContext';
-import { Radio, Sparkles, Plus, ChevronDown, Check } from 'lucide-react';
+import { Radio, SlidersHorizontal, Plus, ChevronDown, Check } from 'lucide-react';
 import { GraphicsQuality } from '@/types';
 
 export const Header: React.FC = () => {
@@ -85,7 +85,7 @@ export const Header: React.FC = () => {
               className="flex items-center gap-1.5 rounded-full bg-carbon px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs text-ash border border-graphite hover:text-warm-bone hover:border-mineral/40 transition-colors"
               aria-label="Graphics and motion settings"
             >
-              <Sparkles className="h-3.5 w-3.5 text-mineral" />
+              <SlidersHorizontal className="h-3.5 w-3.5 text-mineral" />
               <span className="capitalize hidden md:inline">{quality} mode</span>
               <ChevronDown className="h-3 w-3 text-ash" />
             </button>

@@ -27,11 +27,6 @@ const config: Config = {
 
         // Backward-compatible aliases for existing components
         obsidian: 'var(--color-obsidian)',
-        plum: {
-          base: 'var(--color-plum-base)',
-          surface: 'var(--color-plum-surface)',
-          subtle: 'var(--color-plum-subtle)',
-        },
         ivory: 'var(--color-ivory)',
         warm: {
           grey: 'var(--color-warm-grey)',
@@ -57,7 +52,6 @@ const config: Config = {
         serif: ['Syne', 'sans-serif'],
       },
       boxShadow: {
-        'glow-mineral': '0 0 35px -8px rgba(160, 183, 168, 0.20)',
         'glow-lavender': '0 0 35px -8px rgba(160, 183, 168, 0.20)',
         'glow-album': '0 20px 50px -15px rgba(0, 0, 0, 0.8), 0 0 30px -8px rgba(160, 183, 168, 0.12)',
       },

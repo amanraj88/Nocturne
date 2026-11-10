@@ -1,30 +1,46 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useLounge } from '@/context/LoungeContext';
-import { Radio, X, Users, Lock, Sparkles } from 'lucide-react';
+import { Radio, X } from 'lucide-react';
 
 export const CreateRoomModal: React.FC = () => {
   const router = useRouter();
-  const { isCreateRoomOpen, setIsCreateRoomOpen, switchRoom } = useLounge();
+  const { isCreateRoomOpen, setIsCreateRoomOpen, createRoom } = useLounge();
   const [title, setTitle] = useState('');
   const [vibeTag, setVibeTag] = useState('');
   const [description, setDescription] = useState('');
-  const [mode, setMode] = useState<'collaborative' | 'host-curated'>('collaborative');
-  const [isPrivate, setIsPrivate] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsCreateRoomOpen(false);
+    };
+    if (isCreateRoomOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isCreateRoomOpen, setIsCreateRoomOpen]);
 
   if (!isCreateRoomOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim()) return;
-
-    const slug = title
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '');
-
-    setIsCreateRoomOpen(false);
-    router.push(`/room/${slug}`);
+    if (!title.trim() || creating) return;
+    setCreating(true);
+    setCreateError(null);
+    try {
+      const newRoom = await createRoom({ title, vibeTag, description, mode: 'collaborative' });
+      setIsCreateRoomOpen(false);
+      setTitle('');
+      setVibeTag('');
+      setDescription('');
+      router.push(`/room/${newRoom.slug}`);
+    } catch (error) {
+      setCreateError(error instanceof Error ? error.message : 'Could not create this room. Try again.');
+    } finally {
+      setCreating(false);
+    }
   };
 
   return (
@@ -36,28 +52,30 @@ export const CreateRoomModal: React.FC = () => {
     >
       <div
         className="fixed inset-0"
-        onClick={() => setIsCreateRoomOpen(false)}
+        onClick={() => { if (!creating) setIsCreateRoomOpen(false); }}
       />
 
-      <div className="relative z-10 w-full max-w-lg rounded-2xl bg-carbon border border-graphite p-6 overflow-hidden">
-        <div className="flex items-center justify-between pb-3 border-b border-graphite">
+      <div className="relative z-10 w-full max-w-lg rounded-[4px] bg-carbon border border-graphite shadow-md overflow-hidden">
+        {/* Editorial Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-graphite bg-deep-ink">
           <div className="flex items-center gap-2">
-            <Radio className="w-5 h-5 text-mineral" />
-            <h3 id="create-lounge-title" className="font-display text-base font-bold text-warm-bone">
+            <Radio className="w-4 h-4 text-mineral" />
+            <h3 id="create-lounge-title" className="font-display text-sm font-bold tracking-tight text-warm-bone">
               Curate a new lounge
             </h3>
           </div>
           <button
             type="button"
+            disabled={creating}
             onClick={() => setIsCreateRoomOpen(false)}
-            className="p-1.5 rounded-lg text-ash hover:text-warm-bone hover:bg-graphite transition-colors"
+            className="p-1.5 rounded-[2px] text-ash hover:text-warm-bone hover:bg-carbon border border-transparent hover:border-graphite transition-colors"
             aria-label="Close dialog"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
             <label htmlFor="lounge-title" className="block text-xs font-medium text-ash mb-1.5">
               Lounge Title
@@ -67,9 +85,11 @@ export const CreateRoomModal: React.FC = () => {
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
+              minLength={2}
+              maxLength={60}
               placeholder="e.g. Kyoto Midnight Synthesizers"
               required
-              className="w-full rounded-xl bg-deep-ink border border-graphite px-3.5 py-2.5 text-xs text-warm-bone placeholder:text-ash/60 focus:outline-none focus:border-mineral"
+              className="w-full rounded-[2px] bg-deep-ink border border-graphite px-3 py-2 text-xs text-warm-bone placeholder:text-ash/50 focus:outline-none focus:border-mineral focus:ring-1 focus:ring-mineral font-sans transition-colors"
             />
           </div>
 
@@ -82,8 +102,9 @@ export const CreateRoomModal: React.FC = () => {
               type="text"
               value={vibeTag}
               onChange={(e) => setVibeTag(e.target.value)}
+              maxLength={80}
               placeholder="e.g. Ambient Glitch & Modular"
-              className="w-full rounded-xl bg-deep-ink border border-graphite px-3.5 py-2.5 text-xs text-warm-bone placeholder:text-ash/60 focus:outline-none focus:border-mineral"
+              className="w-full rounded-[2px] bg-deep-ink border border-graphite px-3 py-2 text-xs text-warm-bone placeholder:text-ash/50 focus:outline-none focus:border-mineral focus:ring-1 focus:ring-mineral font-sans transition-colors"
             />
           </div>
 
@@ -96,82 +117,35 @@ export const CreateRoomModal: React.FC = () => {
               rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
+              maxLength={500}
               placeholder="Describe the sonic aesthetic and listening mood..."
-              className="w-full rounded-xl bg-deep-ink border border-graphite px-3.5 py-2.5 text-xs text-warm-bone placeholder:text-ash/60 focus:outline-none focus:border-mineral resize-none"
+              className="w-full rounded-[2px] bg-deep-ink border border-graphite px-3 py-2 text-xs text-warm-bone placeholder:text-ash/50 focus:outline-none focus:border-mineral focus:ring-1 focus:ring-mineral font-sans resize-none transition-colors"
             />
           </div>
 
-          <div>
-            <span className="block text-xs font-medium text-ash mb-1.5">
-              Listening Dynamics
-            </span>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setMode('collaborative')}
-                className={`p-3 rounded-xl border text-left transition-colors ${
-                  mode === 'collaborative'
-                    ? 'bg-deep-ink border-mineral text-warm-bone'
-                    : 'bg-deep-ink/60 border-graphite text-ash hover:border-graphite'
-                }`}
-              >
-                <div className="flex items-center gap-1.5 font-semibold text-xs text-mineral">
-                  <Users className="w-3.5 h-3.5" />
-                  <span>Democracy</span>
-                </div>
-                <p className="text-[11px] text-ash mt-1 leading-tight">
-                  Open community queue
-                </p>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setMode('host-curated')}
-                className={`p-3 rounded-xl border text-left transition-colors ${
-                  mode === 'host-curated'
-                    ? 'bg-deep-ink border-mineral text-warm-bone'
-                    : 'bg-deep-ink/60 border-graphite text-ash hover:border-graphite'
-                }`}
-              >
-                <div className="flex items-center gap-1.5 font-semibold text-xs text-mineral">
-                  <Lock className="w-3.5 h-3.5" />
-                  <span>Host curation</span>
-                </div>
-                <p className="text-[11px] text-ash mt-1 leading-tight">
-                  Host-managed queue
-                </p>
-              </button>
-            </div>
+          <div className="p-3 rounded-[2px] bg-deep-ink border border-graphite">
+            <p className="text-xs font-medium text-warm-bone">Collaborative room</p>
+            <p className="text-[11px] text-ash mt-1">Anyone with the room link can join, add to the shared queue, and control playback. Sign-in and invite-only access are not available yet.</p>
           </div>
 
-          <div className="flex items-center justify-between p-3 rounded-xl bg-deep-ink border border-graphite">
-            <div>
-              <p className="text-xs font-medium text-warm-bone">Private Lounge</p>
-              <p className="text-[11px] text-ash">Access strictly by direct link</p>
-            </div>
-            <input
-              type="checkbox"
-              id="is-private"
-              checked={isPrivate}
-              onChange={(e) => setIsPrivate(e.target.checked)}
-              className="h-4 w-4 rounded bg-carbon border-graphite text-mineral accent-mineral"
-            />
-          </div>
+          {createError && <p role="alert" className="text-xs text-oxide" aria-live="polite">{createError}</p>}
 
-          <div className="pt-2 flex items-center justify-end gap-3">
+          <div className="pt-3 border-t border-graphite flex items-center justify-end gap-3">
             <button
               type="button"
+              disabled={creating}
               onClick={() => setIsCreateRoomOpen(false)}
-              className="px-4 py-2 rounded-xl text-xs font-medium text-ash hover:text-warm-bone transition-colors"
+              className="px-4 py-2 rounded-[2px] text-xs font-medium text-ash hover:text-warm-bone hover:bg-deep-ink transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="flex items-center gap-2 px-5 py-2 rounded-xl bg-mineral hover:bg-mineral/90 text-deep-ink text-xs font-semibold transition-transform active:scale-95"
+              disabled={creating}
+              className="flex items-center gap-1.5 px-5 py-2 rounded-[2px] bg-mineral hover:bg-mineral/90 text-deep-ink text-xs font-semibold shadow-sm transition-transform active:scale-[0.98]"
             >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Open Lounge</span>
+              <Radio className="w-3.5 h-3.5" />
+              <span>{creating ? 'Opening…' : 'Open Lounge'}</span>
             </button>
           </div>
         </form>

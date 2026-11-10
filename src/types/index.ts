@@ -3,29 +3,44 @@ export type GraphicsQuality = 'high' | 'low' | 'off';
 export interface UserProfile {
   id: string;
   name: string;
-  avatar: string;
+  avatar?: string;
   role: 'host' | 'collaborator' | 'listener';
   isListening: boolean;
   joinedAt: string;
 }
 
+export type TrackSourceType = 'local' | 'shared-audio' | 'youtube' | 'fixture' | 'specimen';
+
 export interface Track {
   id: string;
-  youtubeId: string;
+  sourceType?: TrackSourceType;
+  youtubeId?: string;
   title: string;
   artist: string;
   albumArt: string;
   artworkId?: 'noc-01' | 'noc-02' | 'noc-03';
   durationSeconds: number;
+  audioUrl?: string;
+  isLocalFile?: boolean;
+  fileName?: string;
+  fileSize?: string;
+  isTestFixture?: boolean;
   addedBy: {
     id: string;
     name: string;
-    avatar: string;
+    avatar?: string;
   };
   addedAt: string;
   upvotes: number;
   skipVotes: number;
   userVotedSkip?: boolean;
+}
+
+declare global {
+  interface Window {
+    YT?: any;
+    onYouTubeIframeAPIReady?: () => void;
+  }
 }
 
 export interface Room {
@@ -37,7 +52,7 @@ export interface Room {
   host: UserProfile;
   listenerCount: number;
   isPrivate: boolean;
-  mode: 'collaborative' | 'host-curated';
+  mode: 'collaborative';
   currentTrackId: string;
   artworkId?: 'noc-01' | 'noc-02' | 'noc-03';
   ambientColor: string;
@@ -50,7 +65,6 @@ export interface PlaybackState {
   durationSeconds: number;
   volume: number;
   isMuted: boolean;
-  driftMs: number;
   revision: number;
   quality: GraphicsQuality;
 }

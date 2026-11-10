@@ -16,3 +16,15 @@ export function formatNumberCompact(num: number): string {
   if (num >= 1000) return (num / 1000).toFixed(1) + 'k';
   return num.toString();
 }
+
+export function parseYouTubeVideoId(input: string): string | null {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+  if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) {
+    return trimmed;
+  }
+  const match = trimmed.match(
+    /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/
+  );
+  return match ? match[1] : null;
+}

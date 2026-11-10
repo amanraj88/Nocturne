@@ -16,6 +16,9 @@ tsconfig.tsbuildinfo
 *.pem
 *.key
 
+# Uploaded room audio and room state
+.data/
+
 # Logs
 *.log
 npm-debug.log*

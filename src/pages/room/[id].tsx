@@ -1,17 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
+import { useRouter } from 'next/router';
 import { useLounge } from '@/context/LoungeContext';
 import { VinylStage } from '@/components/lounge/VinylStage';
 import { PlaybackDeck } from '@/components/lounge/PlaybackDeck';
 import { QueueDock } from '@/components/lounge/QueueDock';
 import { SocialDock } from '@/components/lounge/SocialDock';
-import { SearchModal } from '@/components/lounge/SearchModal';
 import { Disc3, Users, Radio } from 'lucide-react';
 
 export default function RoomPage() {
-  const { currentRoom } = useLounge();
+  const router = useRouter();
+  const { id } = router.query;
+  const { currentRoom, resolveAndSetRoom } = useLounge();
   const [mobileTab, setMobileTab] = useState<'stage' | 'queue' | 'social'>('stage');
   const [desktopSideTab, setDesktopSideTab] = useState<'queue' | 'social'>('queue');
+
+  useEffect(() => {
+    if (router.isReady && typeof id === 'string') {
+      resolveAndSetRoom(id);
+    }
+  }, [router.isReady, id, resolveAndSetRoom]);
 
   return (
     <>
@@ -19,17 +27,17 @@ export default function RoomPage() {
         <title>{`${currentRoom.title} • NOCTURNE Listening Lounge`}</title>
         <meta
           name="description"
-          content={`Live social listening room: ${currentRoom.title}. ${currentRoom.description}`}
+          content={`Social listening room: ${currentRoom.title}. ${currentRoom.description}`}
         />
       </Head>
 
       <div className="flex flex-col h-[calc(100dvh-3.5rem)] sm:h-[calc(100dvh-4rem)] overflow-hidden bg-deep-ink text-warm-bone w-full">
         {/* Main Stage Grid Container */}
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-hidden w-full min-w-0">
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-hidden w-full min-w-0 min-h-0">
           {/* Central Listening Stage */}
           <section
             aria-label="Vinyl listening stage"
-            className={`lg:col-span-7 xl:col-span-8 flex flex-col items-center justify-center overflow-y-auto border-b lg:border-b-0 lg:border-r border-graphite bg-deep-ink w-full min-w-0 ${
+            className={`lg:col-span-7 xl:col-span-8 flex flex-col items-center justify-start overflow-x-hidden overflow-y-auto border-b lg:border-b-0 lg:border-r border-graphite bg-deep-ink w-full min-w-0 min-h-0 py-3 sm:py-5 lg:py-6 ${
               mobileTab !== 'stage' ? 'hidden lg:flex' : 'flex'
             }`}
           >
@@ -129,9 +137,6 @@ export default function RoomPage() {
         <div className="shrink-0 z-30">
           <PlaybackDeck />
         </div>
-
-        {/* Queue Search Modal */}
-        <SearchModal />
       </div>
     </>
   );
