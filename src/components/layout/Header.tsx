@@ -63,7 +63,7 @@ export const Header: React.FC = () => {
             Lounges
           </Link>
           <Link
-            href={`/room/${currentRoom.slug}`}
+            href={currentRoom.slug ? `/room/${currentRoom.slug}` : '/'}
             className={`px-4 py-1.5 rounded-full text-xs font-medium transition-colors flex items-center gap-1.5 ${
               isRoomPage
                 ? 'bg-deep-ink text-mineral border border-graphite'

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
+import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useLounge } from '@/context/LoungeContext';
 import { VinylStage } from '@/components/lounge/VinylStage';
@@ -11,27 +12,56 @@ import { Disc3, Users, Radio } from 'lucide-react';
 export default function RoomPage() {
   const router = useRouter();
   const { id } = router.query;
-  const { currentRoom, resolveAndSetRoom } = useLounge();
+  const { currentRoom, roomLoadState, resolveAndSetRoom } = useLounge();
   const [mobileTab, setMobileTab] = useState<'stage' | 'queue' | 'social'>('stage');
   const [desktopSideTab, setDesktopSideTab] = useState<'queue' | 'social'>('queue');
 
   useEffect(() => {
     if (router.isReady && typeof id === 'string') {
-      resolveAndSetRoom(id);
+      void resolveAndSetRoom(id);
     }
   }, [router.isReady, id, resolveAndSetRoom]);
 
   return (
     <>
       <Head>
-        <title>{`${currentRoom.title} • NOCTURNE Listening Lounge`}</title>
+        <title>{roomLoadState === 'ready' ? `${currentRoom.title} • NOCTURNE Listening Lounge` : roomLoadState === 'not-found' ? 'Room not found • NOCTURNE' : roomLoadState === 'error' ? 'Room unavailable • NOCTURNE' : 'Loading room • NOCTURNE'}</title>
         <meta
           name="description"
-          content={`Social listening room: ${currentRoom.title}. ${currentRoom.description}`}
+          content={roomLoadState === 'ready' ? `Social listening room: ${currentRoom.title}. ${currentRoom.description}` : 'NOCTURNE shared listening room.'}
         />
       </Head>
 
-      <div className="flex flex-col h-[calc(100dvh-3.5rem)] sm:h-[calc(100dvh-4rem)] overflow-hidden bg-deep-ink text-warm-bone w-full">
+      {roomLoadState !== 'ready' ? (
+        <main className="min-h-[calc(100dvh-3.5rem)] sm:min-h-[calc(100dvh-4rem)] bg-deep-ink text-warm-bone flex items-center justify-center px-5 py-12">
+          <section className="w-full max-w-md border border-graphite bg-carbon p-7 sm:p-9 text-center" aria-live="polite">
+            {roomLoadState === 'loading' ? (
+              <div role="status">
+                <p className="font-sans text-xs font-medium tracking-wide text-mineral">NOCTURNE room</p>
+                <h1 className="mt-3 font-display text-2xl font-bold">Finding the lounge</h1>
+                <p className="mt-2 text-sm text-ash">Checking the room link and reconnecting you to its queue.</p>
+              </div>
+            ) : roomLoadState === 'not-found' ? (
+              <div>
+                <p className="font-sans text-xs font-medium tracking-wide text-oxide">Room not found</p>
+                <h1 className="mt-3 font-display text-2xl font-bold">This lounge is unavailable</h1>
+                <p className="mt-2 text-sm text-ash">The link may be incorrect, or the room may have been removed.</p>
+                <Link href="/" className="mt-6 inline-flex rounded-full bg-mineral px-5 py-2.5 text-sm font-semibold text-deep-ink hover:bg-mineral/90">Browse lounges</Link>
+              </div>
+            ) : (
+              <div>
+                <p className="font-sans text-xs font-medium tracking-wide text-oxide">Room connection issue</p>
+                <h1 className="mt-3 font-display text-2xl font-bold">Couldn’t reach this lounge</h1>
+                <p className="mt-2 text-sm text-ash">Your previous room has been cleared. Check your connection and try again.</p>
+                <div className="mt-6 flex flex-wrap justify-center gap-3">
+                  <button type="button" onClick={() => typeof id === 'string' && void resolveAndSetRoom(id)} className="rounded-full bg-mineral px-5 py-2.5 text-sm font-semibold text-deep-ink hover:bg-mineral/90">Try again</button>
+                  <Link href="/" className="rounded-full border border-graphite px-5 py-2.5 text-sm font-medium text-warm-bone hover:border-mineral/50">Browse lounges</Link>
+                </div>
+              </div>
+            )}
+          </section>
+        </main>
+      ) : <div className="flex flex-col h-[calc(100dvh-3.5rem)] sm:h-[calc(100dvh-4rem)] overflow-hidden bg-deep-ink text-warm-bone w-full">
         {/* Main Stage Grid Container */}
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-hidden w-full min-w-0 min-h-0">
           {/* Central Listening Stage */}
@@ -137,7 +167,7 @@ export default function RoomPage() {
         <div className="shrink-0 z-30">
           <PlaybackDeck />
         </div>
-      </div>
+      </div>}
     </>
   );
 }

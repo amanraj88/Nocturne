@@ -4,6 +4,7 @@ import { FEATURED_ROOMS, INITIAL_TRACKS } from '@/lib/mockData';
 
 interface LoungeContextType {
   currentRoom: Room;
+  roomLoadState: 'ready' | 'loading' | 'not-found' | 'error';
   rooms: Room[];
   queue: Track[];
   currentTrack: Track | null;
@@ -46,7 +47,7 @@ interface LoungeContextType {
   triggerReaction: (emoji: string) => void;
   switchRoom: (roomId: string) => void;
   createRoom: (data: Partial<Room>) => Promise<Room>;
-  resolveAndSetRoom: (slugOrId: string) => void;
+  resolveAndSetRoom: (slugOrId: string) => Promise<void>;
   setIsSearchOpen: (open: boolean) => void;
   setIsCreateRoomOpen: (open: boolean) => void;
 }
@@ -63,6 +64,22 @@ const mergeRoomQueueWithBrowserLocalTracks = (remoteQueue: Track[], localQueue: 
     ...remoteQueue.filter((track) => !isBrowserLocalTrack(track)),
   ];
   return { queue: merged, activeIndex: activeTrackId ? merged.findIndex((track) => track.id === activeTrackId) : -1 };
+};
+
+const EMPTY_ROOM: Room = {
+  id: '',
+  slug: '',
+  title: '',
+  vibeTag: '',
+  description: '',
+  host: { id: '', name: '', role: 'listener', isListening: false, joinedAt: '' },
+  listenerCount: 0,
+  isPrivate: false,
+  mode: 'collaborative',
+  currentTrackId: '',
+  artworkId: 'noc-01',
+  ambientColor: '#101514',
+  accentColor: '#A0B7A8',
 };
 
 export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -111,6 +128,7 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   });
 
   const [currentRoom, setCurrentRoom] = useState<Room>(FEATURED_ROOMS[0]);
+  const [roomLoadState, setRoomLoadState] = useState<'ready' | 'loading' | 'not-found' | 'error'>('ready');
   const [queue, setQueue] = useState<Track[]>(INITIAL_TRACKS);
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -145,6 +163,8 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     selectTrack: (trackId: string, broadcast?: boolean) => void;
     skipTrack: (broadcast?: boolean) => void;
   }>({ seekTo: () => {}, selectTrack: () => {}, skipTrack: () => {} });
+  const roomLoadRequestRef = useRef(0);
+  const roomLoadAbortRef = useRef<AbortController | null>(null);
 
   // Refs for stable access in SSE event handlers
   const currentTrackIndexRef = useRef(currentTrackIndex);
@@ -542,6 +562,7 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const syncYouTubePlaybackState = useCallback(
     (nextPlaying: boolean) => {
+      if (!currentRoomRef.current?.id) return;
       if (!isYouTubeActiveRef.current || !currentTrackRef.current || !(currentTrackRef.current.sourceType === 'youtube' || (!currentTrackRef.current.audioUrl && currentTrackRef.current.youtubeId))) return;
       if (nextPlaying) setYouTubePlaybackBlocked(false);
       if (isPlayingRef.current === nextPlaying) return;
@@ -1218,50 +1239,96 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const resolveAndSetRoom = useCallback(
-    (slugOrId: string) => {
+    async (slugOrId: string) => {
       if (!slugOrId) return;
-      const match =
-        rooms.find((r) => r.slug === slugOrId || r.id === slugOrId) ||
-        FEATURED_ROOMS.find((r) => r.slug === slugOrId || r.id === slugOrId);
+      const requestId = ++roomLoadRequestRef.current;
+      roomLoadAbortRef.current?.abort();
+      const controller = new AbortController();
+      roomLoadAbortRef.current = controller;
 
-      if (match) {
-        setCurrentRoom(match);
-        if (match.currentTrackId) {
-          const trackIdx = queue.findIndex((t) => t.id === match.currentTrackId);
-          if (trackIdx !== -1) {
-            setCurrentTrackIndex(trackIdx);
-          }
+      // Clear every room-scoped value before requesting the next room. Never leave
+      // the previous room visible while a shared link is loading or failing.
+      setRoomLoadState('loading');
+      currentTrackRef.current = null;
+      currentRoomRef.current = EMPTY_ROOM;
+      queueRef.current = [];
+      currentTrackIndexRef.current = 0;
+      isPlayingRef.current = false;
+      pendingSharedSeekRef.current = null;
+      setCurrentRoom(EMPTY_ROOM);
+      setQueue([]);
+      setCurrentTrackIndex(0);
+      setIsPlaying(false);
+      setProgressSeconds(0);
+      setPhysicalDuration(null);
+      setMembers([]);
+      setChatMessages([]);
+      setReactions([]);
+      setAudioError(null);
+      setAudioPlaybackBlocked(false);
+      setYouTubePlaybackBlocked(false);
+      setSharingTrackId(null);
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.removeAttribute('src');
+        audioRef.current.load();
+      }
+      try { ytPlayerRef.current?.pauseVideo?.(); } catch (e) {}
+      localFilesRef.current.clear();
+      objectUrlsRef.current.forEach((url) => {
+        try { URL.revokeObjectURL(url); } catch (e) {}
+      });
+      objectUrlsRef.current.clear();
+
+      try {
+        const response = await fetch(`/api/rooms/${encodeURIComponent(slugOrId)}/state`, { signal: controller.signal });
+        if (requestId !== roomLoadRequestRef.current) return;
+        if (response.status === 404) {
+          setRoomLoadState('not-found');
+          return;
         }
-        setProgressSeconds(0);
-      } else {
-        // Fetch room state from server API for custom shared links
-        fetch(`/api/rooms/${slugOrId}/state`)
-          .then((res) => {
-            if (res.ok) return res.json();
-            throw new Error('Not found');
-          })
-          .then((data) => {
-            if (data.room) {
-              setCurrentRoom(data.room);
-              setRooms((prev) => {
-                if (prev.some((r) => r.id === data.room.id)) return prev;
-                return [...prev, data.room];
-              });
-              if (Array.isArray(data.queue) && data.queue.length > 0) {
-                const merged = mergeRoomQueueWithBrowserLocalTracks(data.queue, queueRef.current, queueRef.current[currentTrackIndexRef.current]?.id);
-                setQueue(merged.queue);
-                if (merged.activeIndex >= 0) setCurrentTrackIndex(merged.activeIndex);
-              }
-              if (data.playback?.currentTrackId) {
-                const idx = (data.queue || []).findIndex((t: Track) => t.id === data.playback.currentTrackId);
-                if (idx !== -1) setCurrentTrackIndex(idx);
-              }
-            }
-          })
-          .catch(() => {});
+        if (!response.ok) throw new Error(`Room request failed (${response.status}).`);
+        const data = await response.json();
+        if (requestId !== roomLoadRequestRef.current) return;
+        if (!data?.room?.id || !Array.isArray(data.queue) || !data.playback) {
+          throw new Error('The room response was incomplete.');
+        }
+
+        const nextQueue = data.queue.filter((track: Track) => !isBrowserLocalTrack(track));
+        const nextIndex = nextQueue.findIndex((track: Track) => track.id === data.playback.currentTrackId);
+        setCurrentRoom(data.room as Room);
+        currentRoomRef.current = data.room as Room;
+        setQueue(nextQueue);
+        queueRef.current = nextQueue;
+        const selectedIndex = nextIndex >= 0 ? nextIndex : 0;
+        setCurrentTrackIndex(selectedIndex);
+        currentTrackIndexRef.current = selectedIndex;
+        setIsPlaying(Boolean(data.playback.isPlaying && nextQueue.length > 0));
+        isPlayingRef.current = Boolean(data.playback.isPlaying && nextQueue.length > 0);
+        setProgressSeconds(nextIndex >= 0 && Number.isFinite(data.playback.progressSeconds) ? Math.max(0, data.playback.progressSeconds) : 0);
+        setMembers(Array.isArray(data.participants) ? data.participants.map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          role: p.role || 'listener',
+          isListening: true,
+          joinedAt: p.joinedAt || 'Just now',
+          avatar: p.avatar,
+        })) : []);
+        setChatMessages(Array.isArray(data.chatMessages) ? data.chatMessages : []);
+        setRooms((prev) => prev.some((room) => room.id === data.room.id) ? prev : [...prev, data.room]);
+        if (data.playback.sourceType === 'shared-audio' && Number.isFinite(data.playback.progressSeconds)) {
+          pendingSharedSeekRef.current = Math.max(0, data.playback.progressSeconds);
+        }
+        setRoomLoadState('ready');
+      } catch (error) {
+        if (controller.signal.aborted || requestId !== roomLoadRequestRef.current) return;
+        console.error('Unable to load listening room:', error);
+        setRoomLoadState('error');
+      } finally {
+        if (requestId === roomLoadRequestRef.current) roomLoadAbortRef.current = null;
       }
     },
-    [rooms, queue]
+    []
   );
 
   const switchRoom = (roomId: string) => {
@@ -1387,6 +1454,7 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     <LoungeContext.Provider
       value={{
         currentRoom,
+        roomLoadState,
         rooms,
         queue,
         currentTrack,

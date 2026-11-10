@@ -106,6 +106,7 @@ class RoomManager extends EventEmitter {
                     ...savedPlayback,
                     currentTrackId: savedTrackExists ? savedPlayback.currentTrackId : (existing.queue[0]?.id || ''),
                     isPlaying: Boolean(savedTrackExists && savedPlayback.isPlaying),
+                    progressSeconds: savedTrackExists && Number.isFinite(savedPlayback.progressSeconds) ? Math.max(0, savedPlayback.progressSeconds) : 0,
                     sourceType: savedTrackExists ? savedPlayback.sourceType : 'specimen',
                   };
                 }
