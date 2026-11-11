@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const stateRoute = fs.readFileSync('src/pages/api/rooms/[id]/state.ts', 'utf8');
+const roomListRoute = fs.readFileSync('src/pages/api/rooms/index.ts', 'utf8');
+const loungeContext = fs.readFileSync('src/context/LoungeContext.tsx', 'utf8');
+assert.ok(stateRoute.includes('getServiceRoleClient'));
+assert.ok(stateRoute.includes('admin.auth.getUser(bearerToken)'));
+assert.ok(stateRoute.includes("eq('is_active', true)"));
+assert.ok(stateRoute.includes("Cache-Control', 'private, no-store"));
+assert.ok(roomListRoute.includes(".eq('is_private', false)"));
+assert.ok(roomListRoute.includes(".eq('is_private', false)"));
+assert.ok(loungeContext.includes('requestHeaders.Authorization'));
+assert.ok(loungeContext.includes('session.access_token'));
+console.log('Private room API boundary regression checks: PASS');

@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { roomManager } from '@/lib/server/rooms';
+import { isSupabaseConfigured } from '@/lib/supabase';
 
 export const config = {
   api: {
@@ -8,6 +9,8 @@ export const config = {
 };
 
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (isSupabaseConfigured()) return res.status(404).end();
+
   if (req.method !== 'GET') {
     res.setHeader('Allow', ['GET']);
     return res.status(405).end();

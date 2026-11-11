@@ -1,27 +1,37 @@
-# NOCTURNE deployment
+# NOCTURNE deployment checklist
 
-## Run with Docker Compose
+## Supabase
 
-Install Docker Desktop (or Docker Engine with the Compose plugin), then from the project folder run:
+1. Use the existing Sydney project (`ap-southeast-2`). Do not edit or rerun
+   `supabase/migrations/20261111_init.sql`.
+2. In SQL Editor, run the read-only checks in
+   `docs/database-permissions-proposal.sql` and review the existing grants,
+   especially `host_recovery_attempts`. If other systems rely on those grants,
+   stop and review before resetting them.
+3. Paste and run `supabase/migrations/20261112_security_hardening.sql` as one
+   script. Then run the basic verification queries from the same guide.
+4. In Authentication settings, enable Anonymous Sign-Ins. Set the Site URL to
+   the final HTTPS domain and add the production URL to Redirect URLs.
+5. Confirm `nocturne-audio` is private and has its existing 25 MiB limit.
 
-```sh
-docker compose up --build -d
-```
+## Vercel
 
-Open `http://localhost:3000`. To stop it, run `docker compose down`. Room state and uploaded room audio are kept in the `nocturne-data` volume across container restarts.
+1. Push the reviewed `main` branch to GitHub, then import `amanraj88/Nocturne`
+   into Vercel. Hobby is for personal, non-commercial use.
+2. Add these environment variables in Vercel (Production and Preview):
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `SUPABASE_SERVICE_ROLE_KEY` (server-only; never prefix with `NEXT_PUBLIC_`)
+   - `YOUTUBE_API_KEY` (optional; only for live YouTube search)
+3. Deploy a Preview and check room listing, private-room access, playback, chat,
+   and local audio upload. Then deploy Production and repeat a short smoke test.
 
-## Optional YouTube search
+`.env.local` is ignored by Git and `.env.example` contains placeholders. Do not
+commit credentials or paste them into chat. Vercel runs Next.js Functions; do not
+use the Docker/persistent-volume instructions for production. Supabase stores
+the production room and audio data.
 
-Pasting YouTube links or IDs works without credentials. Live catalog search needs a YouTube Data API v3 key. Set `YOUTUBE_API_KEY` in the deployment platform's private environment-variable settings before starting the app. Do not commit a real key to the repository.
-
-## Hosting requirements and current limits
-
-- Use one long-running Node.js process/container with writable persistent storage mounted at `/app/.data`.
-- The room state and live updates are held by that process. A multi-instance/serverless deployment needs shared database, file storage, and realtime coordination first.
-- Put the app behind HTTPS for public use. The reverse proxy must support long-lived Server-Sent Events connections for room updates and allow audio uploads up to 25 MB.
-- Rooms currently have link-based access. Sign-in, private/invite-only rooms, moderation, and production abuse controls are not included.
-- YouTube playback is provided by the official embedded player, subject to YouTube availability and embed permissions. Local files only reach other listeners after the user chooses to share them with the room.
-
-## Manual Node.js run
-
-With Node.js 20 and npm installed, run `npm ci`, `npm run build`, then `npm run start`. Keep `.data` persistent and writable between restarts.
+Future improvements: integrate CAPTCHA before a public launch; replace short-lived
+signed audio URLs if strict immediate media revocation is required. These do not
+block a personal Preview deployment. CAPTCHA is not wired into the app yet, so
+do not enable Supabase CAPTCHA until the app can pass its token.

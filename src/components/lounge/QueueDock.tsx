@@ -196,8 +196,8 @@ export const QueueDock: React.FC = () => {
                     aria-label={sharingTrackId === track.id ? 'Uploading audio to room' : 'Share audio with room'}
                     title="Uploads a copy for room guests to stream. Only share audio you have permission to share."
                   >
-                    <Upload className="w-3 h-3" />
-                    <span>{sharingTrackId === track.id ? 'Uploading' : 'Share'}</span>
+                    <Upload className={`w-3 h-3 ${sharingTrackId === track.id ? 'animate-pulse text-warm-bone' : ''}`} />
+                    <span>{sharingTrackId === track.id ? 'Uploading…' : 'Share'}</span>
                   </button>
                 )}
 

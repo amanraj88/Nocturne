@@ -1,7 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { roomManager } from '@/lib/server/rooms';
+import { isSupabaseConfigured } from '@/lib/supabase';
 
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
+  // Process-local room state is only a development fallback. Never expose it
+  // beside the configured Supabase-backed production room service.
+  if (isSupabaseConfigured()) return res.status(404).json({ error: 'Room action not found.' });
+
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST']);
     return res.status(405).json({ error: `Method ${req.method} Not Allowed` });

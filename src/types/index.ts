@@ -21,6 +21,7 @@ export interface Track {
   artworkId?: 'noc-01' | 'noc-02' | 'noc-03';
   durationSeconds: number;
   audioUrl?: string;
+  storagePath?: string;
   isLocalFile?: boolean;
   fileName?: string;
   fileSize?: string;
@@ -52,7 +53,7 @@ export interface Room {
   host: UserProfile;
   listenerCount: number;
   isPrivate: boolean;
-  mode: 'collaborative';
+  mode: 'collaborative' | 'host-curated';
   currentTrackId: string;
   artworkId?: 'noc-01' | 'noc-02' | 'noc-03';
   ambientColor: string;

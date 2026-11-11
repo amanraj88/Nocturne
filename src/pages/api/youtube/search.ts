@@ -17,8 +17,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 
-  if (!q || typeof q !== 'string' || !q.trim()) {
-    return res.status(400).json({ error: 'Search query is required' });
+  if (typeof q !== 'string' || !q.trim() || q.trim().length > 100) {
+    return res.status(400).json({ error: 'Enter a search query of 1 to 100 characters.' });
   }
 
   try {
@@ -30,12 +30,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     url.searchParams.set('videoEmbeddable', 'true');
     url.searchParams.set('key', apiKey);
 
-    const response = await fetch(url.toString());
+    const response = await fetch(url.toString(), { signal: AbortSignal.timeout(8000) });
     if (!response.ok) {
-      const errJson = await response.json().catch(() => null);
-      return res.status(response.status).json({
+      return res.status(503).json({
         available: false,
-        error: errJson?.error?.message || 'YouTube search API returned an error',
+        error: 'Live YouTube search is temporarily unavailable.',
         items: [],
       });
     }
@@ -53,10 +52,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       available: true,
       items,
     });
-  } catch (error: any) {
+  } catch {
     return res.status(500).json({
       available: false,
-      error: error?.message || 'Internal server error while searching YouTube',
+      error: 'Live YouTube search is temporarily unavailable.',
       items: [],
     });
   }
