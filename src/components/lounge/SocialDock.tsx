@@ -4,10 +4,6 @@ import {
   Send,
   Smile,
   Music,
-  Moon,
-  Activity,
-  Flame,
-  Sparkles,
   MessageSquare,
 } from 'lucide-react';
 
@@ -56,10 +52,6 @@ export const SocialDock: React.FC = () => {
     setChatInput('');
   };
 
-  const handleReaction = (reaction: string) => {
-    sendChatMessage(`felt: ${reaction}`);
-  };
-
   const handleSaveName = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = editNameInput.trim();
@@ -87,15 +79,16 @@ export const SocialDock: React.FC = () => {
           chatMessages.map((msg) => {
             const userName = msg.user?.name || (msg as any).userName || 'Listener';
             const isHost = (msg.user?.role || (msg as any).userRole) === 'host' || msg.user?.id === currentRoom.host?.id;
-            const isSystemMessage = msg.isSystem || msg.text.startsWith('🎵') || msg.text.includes('added') || msg.text.includes('felt:');
+            const isSystemMessage = msg.isSystem || msg.text.startsWith('🎵') || msg.text.includes('added') || msg.text.includes('felt:') || msg.text.startsWith('Queued YouTube stream');
 
             // Understated Inline System / Queue Activity Row
             if (isSystemMessage) {
+              const cleanText = msg.text.replace(/^🎵\s*/, '');
               return (
                 <div key={msg.id} className="flex justify-center my-1.5">
                   <div className="px-2.5 py-1 rounded-md bg-[var(--bg-recessed)] border border-[var(--border-subtle)] text-[11px] text-[var(--text-muted)] flex items-center gap-1.5 max-w-fit shadow-xs font-mono">
-                    <Music className="w-3 h-3 text-[#8B5CF6] shrink-0" />
-                    <span className="truncate">{msg.text}</span>
+                    <Music className="w-3.5 h-3.5 text-[#8B5CF6] shrink-0" />
+                    <span className="truncate">{cleanText}</span>
                   </div>
                 </div>
               );
@@ -144,42 +137,6 @@ export const SocialDock: React.FC = () => {
           })
         )}
         <div ref={messagesEndRef} />
-      </div>
-
-      {/* Subtle Reaction Pills */}
-      <div className="px-3 py-1.5 border-t border-[var(--border-subtle)] flex items-center gap-1.5 overflow-x-auto custom-scrollbar bg-[var(--bg-panel)] shrink-0">
-        <button
-          type="button"
-          onClick={() => handleReaction('Late night')}
-          className="px-2 py-0.5 rounded-full bg-[var(--bg-recessed)] hover:bg-[var(--bg-elevated)] text-[11px] text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--border-subtle)] flex items-center gap-1 whitespace-nowrap transition-colors"
-        >
-          <Moon className="w-3 h-3 text-[#8B5CF6]" />
-          <span>Late night</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => handleReaction('Deep focus')}
-          className="px-2 py-0.5 rounded-full bg-[var(--bg-recessed)] hover:bg-[var(--bg-elevated)] text-[11px] text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--border-subtle)] flex items-center gap-1 whitespace-nowrap transition-colors"
-        >
-          <Activity className="w-3 h-3 text-[#38BDF8]" />
-          <span>Deep focus</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => handleReaction('Warmth')}
-          className="px-2 py-0.5 rounded-full bg-[var(--bg-recessed)] hover:bg-[var(--bg-elevated)] text-[11px] text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--border-subtle)] flex items-center gap-1 whitespace-nowrap transition-colors"
-        >
-          <Flame className="w-3 h-3 text-[#F43F5E]" />
-          <span>Warmth</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => handleReaction('Vibe')}
-          className="px-2 py-0.5 rounded-full bg-[var(--bg-recessed)] hover:bg-[var(--bg-elevated)] text-[11px] text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--border-subtle)] flex items-center gap-1 whitespace-nowrap transition-colors"
-        >
-          <Sparkles className="w-3 h-3 text-[#FBBF24]" />
-          <span>Vibe</span>
-        </button>
       </div>
 
       {/* ================================================================== */}

@@ -3,6 +3,7 @@ import { Room, Track, UserProfile, ChatMessage, ReactionBurst, GraphicsQuality, 
 import { FEATURED_ROOMS, INITIAL_TRACKS } from '@/lib/mockData';
 import { initAnonymousAuth, isSupabaseConfigured, supabase } from '@/lib/supabase';
 import { validateAudioBuffer } from '@/lib/audioValidation';
+import { StarterTape } from '@/data/starterTapes';
 
 interface LoungeContextType {
   currentRoom: Room;
@@ -57,6 +58,7 @@ interface LoungeContextType {
   triggerReaction: (emoji: string) => void;
   switchRoom: (roomId: string) => void;
   createRoom: (data: Partial<Room>) => Promise<Room>;
+  launchStarterTape: (tape: StarterTape) => Promise<Room>;
   resolveAndSetRoom: (slugOrId: string) => Promise<void>;
   setIsSearchOpen: (open: boolean) => void;
   setIsCreateRoomOpen: (open: boolean) => void;
@@ -2771,6 +2773,32 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return newRoom;
   };
 
+  const launchStarterTape = async (tape: StarterTape): Promise<Room> => {
+    const artworkId = tape.mood === 'Electronic' ? 'noc-03' : tape.mood === 'Late Night' ? 'noc-01' : 'noc-02';
+    const newRoom = await createRoom({
+      title: tape.title,
+      vibeTag: tape.mood,
+      description: tape.subtitle,
+      artworkId,
+    });
+
+    if (tape.tracks && tape.tracks.length > 0) {
+      for (const track of tape.tracks) {
+        await addTrackToQueue({
+          title: track.title,
+          artist: track.artist,
+          youtubeId: track.youtubeId,
+          durationSeconds: track.durationSeconds,
+          albumArt: track.thumbnailUrl,
+          artworkId,
+          sourceType: 'youtube',
+        });
+      }
+    }
+
+    return newRoom;
+  };
+
   const endRoom = useCallback(async (): Promise<boolean> => {
     const room = currentRoomRef.current;
     if (!room || !room.id || room.isFeatured) return false;
@@ -2962,6 +2990,7 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         triggerReaction,
         switchRoom,
         createRoom,
+        launchStarterTape,
         resolveAndSetRoom,
         setIsSearchOpen,
         setIsCreateRoomOpen,

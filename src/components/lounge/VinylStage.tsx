@@ -436,7 +436,7 @@ export const VinylStage: React.FC = () => {
       {/* ================================================================== */}
       {/* CENTER STAGE: Frameless Artwork-First Vinyl Stage / Video Display   */}
       {/* ================================================================== */}
-      <div className="flex-1 min-h-[220px] relative flex items-center justify-center p-4 sm:p-8 overflow-hidden select-none">
+      <div className="flex-1 min-h-0 w-full flex items-center justify-center relative overflow-hidden p-4 select-none">
         {/* Dynamic Ambient Backlight (Adapts to current album art) */}
         <div
           className="absolute w-[360px] h-[360px] sm:w-[440px] sm:h-[440px] rounded-full blur-[80px] opacity-25 dark:opacity-30 pointer-events-none transition-all duration-700 -z-0"
@@ -486,14 +486,33 @@ export const VinylStage: React.FC = () => {
 
             {/* Square Album Artwork Sleeve */}
             <div className="w-52 h-52 sm:w-64 sm:h-64 md:w-72 md:h-72 rounded-xl border border-white/10 shadow-2xl relative z-10 overflow-hidden bg-[#121218] shrink-0">
-              {trackArtworkUrl ? (
+              {currentTrack && trackArtworkUrl ? (
                 <img
                   src={trackArtworkUrl}
                   alt={displayTitle}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover scale-[1.35]"
                 />
               ) : (
-                <ArtworkRenderer artworkId={activeArtworkId} className="w-full h-full object-cover" />
+                <div className="w-full h-full flex items-center justify-center bg-[#0E0E13] relative overflow-hidden select-none">
+                  {/* Pressed-Vinyl Disc SVG: Concentric subtle grooves */}
+                  <svg viewBox="0 0 200 200" className="w-full h-full text-white/[0.05]">
+                    <circle cx="100" cy="100" r="92" fill="none" stroke="currentColor" strokeWidth="1" />
+                    <circle cx="100" cy="100" r="82" fill="none" stroke="currentColor" strokeWidth="0.8" />
+                    <circle cx="100" cy="100" r="72" fill="none" stroke="currentColor" strokeWidth="0.8" />
+                    <circle cx="100" cy="100" r="62" fill="none" stroke="currentColor" strokeWidth="0.8" />
+                    <circle cx="100" cy="100" r="52" fill="none" stroke="currentColor" strokeWidth="0.8" />
+                  </svg>
+                  {/* Center Label */}
+                  <div className="absolute w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-[#181624] border border-[#8B5CF6]/40 flex flex-col items-center justify-center shadow-inner">
+                    <span className="text-[8px] sm:text-[9px] font-syne font-bold tracking-wider text-[#8B5CF6] uppercase">
+                      NOCTURNE
+                    </span>
+                    <span className="text-[6.5px] sm:text-[7.5px] font-mono tracking-widest text-[var(--text-muted)] mt-0.5">
+                      33 RPM
+                    </span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#0E0E13] border border-white/20 mt-1" />
+                  </div>
+                </div>
               )}
               {/* Subtle Ambient Lighting Gloss */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />

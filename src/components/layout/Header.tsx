@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useLounge } from '@/context/LoungeContext';
-import { Plus, Sun, Moon } from 'lucide-react';
+import { Plus, Sun, Moon, Disc } from 'lucide-react';
 
 export const Header: React.FC = () => {
   const router = useRouter();
   const {
+    currentRoom,
     setIsCreateRoomOpen,
     theme,
     toggleTheme,
@@ -14,6 +15,9 @@ export const Header: React.FC = () => {
   } = useLounge();
 
   const [isMounted, setIsMounted] = useState(false);
+
+  // Invariant navigation target fallback
+  const _activeRoomTarget = currentRoom?.slug ? `/room/${currentRoom.slug}` : '/rooms';
 
   useEffect(() => {
     setIsMounted(true);
@@ -77,7 +81,7 @@ export const Header: React.FC = () => {
               href={`/room/${lastVisitedRoom.slug}`}
               className="hidden md:inline-flex h-[34px] px-3 bg-[var(--bg-panel)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-lg items-center gap-2.5 transition-colors group"
             >
-              <span className="text-[13px] leading-none">💿</span>
+              <Disc className="w-3.5 h-3.5 text-[#8B5CF6] shrink-0" />
               <span className="text-[12px] font-medium text-[var(--text-primary)] tracking-tight max-w-[150px] truncate">
                 {lastVisitedRoom.title}
               </span>
@@ -121,7 +125,7 @@ export const Header: React.FC = () => {
       {isMounted && lastVisitedRoom && (
         <div className="md:hidden w-full h-9 px-4 bg-[var(--bg-recessed)] border-t border-[var(--border-subtle)] flex items-center justify-between text-[11px]">
           <div className="flex items-center gap-2 overflow-hidden min-w-0 pr-2">
-            <span className="text-[12px] leading-none shrink-0">💿</span>
+            <Disc className="w-3.5 h-3.5 text-[#8B5CF6] shrink-0" />
             <span className="font-medium text-[var(--text-primary)] truncate">
               {lastVisitedRoom.title}
             </span>

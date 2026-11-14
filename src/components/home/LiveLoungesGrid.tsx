@@ -1,177 +1,241 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import { useLounge } from '@/context/LoungeContext';
-import { ArtworkRenderer } from '@/components/artwork';
-import { ArrowUpRight, Radio, Sparkles, Filter, Plus } from 'lucide-react';
+import { STARTER_TAPES, StarterTape, TapeMood } from '@/data/starterTapes';
+import { Disc, Users, Loader2, Radio } from 'lucide-react';
 
-const MOOD_FILTERS = [
+const CATEGORIES: Array<'All Rooms' | TapeMood> = [
   'All Rooms',
   'Late Night',
   'Deep Focus',
-  'Sub-bass Warmth',
-  'Ambient Electronic',
-  'Lo-Fi Beats',
-  'Synthwave',
+  'Electronic',
+  'Ambient',
 ];
 
 export const LiveLoungesGrid: React.FC = () => {
-  const { rooms, setIsCreateRoomOpen } = useLounge();
-  const [activeMood, setActiveMood] = useState('All Rooms');
+  const router = useRouter();
+  const { rooms, launchStarterTape } = useLounge();
+  const [activeCategory, setActiveCategory] = useState<'All Rooms' | TapeMood>('All Rooms');
+  const [launchingTapeId, setLaunchingTapeId] = useState<string | null>(null);
 
   // Filter only genuine, active user rooms
   const activeRooms = rooms.filter((r) => !r.isFeatured && r.id);
 
-  const filteredRooms = activeRooms.filter((room) => {
-    if (activeMood === 'All Rooms') return true;
-    const mood = activeMood.toLowerCase();
+  const filteredLiveRooms = activeRooms.filter((room) => {
+    if (activeCategory === 'All Rooms') return true;
+    const cat = activeCategory.toLowerCase();
     return (
-      room.vibeTag.toLowerCase().includes(mood) ||
-      room.title.toLowerCase().includes(mood) ||
-      room.description.toLowerCase().includes(mood)
+      room.vibeTag.toLowerCase().includes(cat) ||
+      room.title.toLowerCase().includes(cat) ||
+      room.description.toLowerCase().includes(cat)
     );
   });
 
+  const filteredTapes = STARTER_TAPES.filter((tape) => {
+    if (activeCategory === 'All Rooms') return true;
+    return tape.mood === activeCategory;
+  });
+
+  const handleLaunchTape = async (tape: StarterTape) => {
+    if (launchingTapeId) return;
+    setLaunchingTapeId(tape.id);
+    try {
+      const room = await launchStarterTape(tape);
+      if (room?.slug) {
+        void router.push(`/room/${room.slug}`);
+      }
+    } catch (err) {
+      console.error('Failed to launch starter tape:', err);
+    } finally {
+      setLaunchingTapeId(null);
+    }
+  };
+
   return (
-    <section id="explore" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      {/* Section Header & Mood Filters */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-6 border-b border-[#EDEAF5] dark:border-[#2D2945]">
+    <section id="explore" className="max-w-[1280px] mx-auto px-4 sm:px-6 py-8">
+      {/* Header & Filter Chips Row */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-4 border-b border-[var(--border-subtle)]">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#7C3AED] dark:bg-[#8B5CF6]" />
-            <span className="text-xs font-semibold text-[#7C3AED] dark:text-[#DDD6FE] tracking-wider uppercase">
-              Curated Spaces
-            </span>
-          </div>
-          <h2 className="mt-1 font-headline font-extrabold text-2xl sm:text-3xl text-[#12101F] dark:text-white tracking-tight">
-            Featured Rooms
+          <h2 className="font-syne font-bold text-xl text-[var(--text-primary)]">
+            Live Rooms & Starter Tapes
           </h2>
-          <p className="mt-1 text-xs sm:text-sm text-[#5E5873] dark:text-[#A19EB5]">
-            Explore collaborative rooms with active playlists and live listeners.
+          <p className="mt-1 text-xs sm:text-sm text-[var(--text-muted)]">
+            Active communal sessions and one-click launchable collections.
           </p>
         </div>
 
-        {/* Mood Chips Bar */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 custom-scrollbar">
-          {MOOD_FILTERS.map((mood) => {
-            const isActive = activeMood === mood;
+        {/* Category Filter Chips */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 custom-scrollbar">
+          {CATEGORIES.map((cat) => {
+            const isActive = activeCategory === cat;
             return (
               <button
-                key={mood}
+                key={cat}
                 type="button"
-                onClick={() => setActiveMood(mood)}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all duration-150 active:scale-95 ${
+                onClick={() => setActiveCategory(cat)}
+                className={`h-8 px-3 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
                   isActive
-                    ? 'bg-[#7C3AED] dark:bg-[#8B5CF6] text-white shadow-lg shadow-purple-500/25 font-semibold'
-                    : 'bg-white dark:bg-[#1A1829] text-[#5E5873] dark:text-[#A19EB5] hover:text-[#12101F] dark:hover:text-white border border-[#EDEAF5] dark:border-[#2D2945] hover:border-[#7C3AED]/40'
+                    ? 'bg-[var(--bg-thumb)] border border-[#8B5CF6]/40 text-[var(--text-primary)]'
+                    : 'bg-[var(--bg-recessed)] border border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-primary)]'
                 }`}
               >
-                {mood}
+                {cat}
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* Lounges Grid or Honest Empty State */}
-      <div className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {activeRooms.length === 0 ? (
-          <div className="col-span-full py-16 px-6 text-center rounded-2xl bg-white dark:bg-[#1A1829] border border-[#EDEAF5] dark:border-[#2D2945] flex flex-col items-center justify-center shadow-sm dark:shadow-xl">
-            <div className="w-16 h-16 rounded-full bg-[#F3F0FA] dark:bg-[#8B5CF6]/15 border border-[#DDD6FE] dark:border-[#8B5CF6]/30 flex items-center justify-center text-[#7C3AED] dark:text-[#8B5CF6] mb-4">
-              <Radio className="w-7 h-7" />
-            </div>
-            <h3 className="font-headline font-bold text-xl text-[#12101F] dark:text-white">No Public Lounges Live</h3>
-            <p className="mt-2 text-sm text-[#5E5873] dark:text-[#A19EB5] max-w-md leading-relaxed">
-              All listening rooms have wrapped up for now. Start a new collaborative room, share your link, and listen together.
-            </p>
-            <button
-              type="button"
-              onClick={() => setIsCreateRoomOpen(true)}
-              className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-semibold text-white bg-[#F43F5E] hover:bg-[#e11d48] dark:bg-[#FF5C8A] dark:hover:bg-[#ff477b] shadow-xl shadow-pink-500/25 transition-all active:scale-95"
-            >
-              <Plus className="w-4 h-4 stroke-[2.5]" />
-              <span>Host a Lounge</span>
-            </button>
+      {/* Honest active rooms status notice if no rooms are currently live */}
+      {activeRooms.length === 0 && (
+        <div className="mt-4 px-3.5 py-2 rounded-lg bg-[var(--bg-recessed)] border border-[var(--border-subtle)] flex items-center justify-between text-xs text-[var(--text-muted)]">
+          <div className="flex items-center gap-2">
+            <Radio className="w-3.5 h-3.5 text-[#8B5CF6]" />
+            <span>No Public Lounges Live right now. Launch any curated tape below to start listening.</span>
           </div>
-        ) : filteredRooms.length === 0 ? (
-          <div className="col-span-full py-12 px-6 text-center rounded-2xl bg-white dark:bg-[#1A1829] border border-[#EDEAF5] dark:border-[#2D2945] flex flex-col items-center justify-center">
-            <p className="text-sm font-semibold text-[#12101F] dark:text-white">No lounges match "{activeMood}"</p>
-            <p className="mt-1 text-xs text-[#5E5873] dark:text-[#A19EB5]">Try selecting "All Rooms" or choose a different vibe.</p>
-            <button
-              type="button"
-              onClick={() => setActiveMood('All Rooms')}
-              className="mt-4 px-4 py-1.5 rounded-full text-xs font-semibold text-[#7C3AED] dark:text-[#8B5CF6] bg-[#F3F0FA] dark:bg-[#8B5CF6]/15 hover:bg-[#EDEAF5] dark:hover:bg-[#8B5CF6]/25 transition-colors"
+        </div>
+      )}
+
+      {/* 3-Column Responsive Card Grid */}
+      <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        {/* 1. Live Rooms (if any match category) */}
+        {filteredLiveRooms.map((room) => {
+          return (
+            <article
+              key={room.id}
+              className="rounded-xl bg-[var(--bg-panel)] border border-[var(--border-subtle)] p-4 flex flex-col justify-between hover:border-[#8B5CF6]/40 transition-colors shadow-sm"
             >
-              Show All Lounges
-            </button>
-          </div>
-        ) : (
-          filteredRooms.map((room) => {
-            const artworkId = room.artworkId || 'noc-01';
-            const listenerCount = typeof room.listenerCount === 'number' ? room.listenerCount : 0;
-
-            return (
-              <Link
-                key={room.id}
-                href={`/room/${room.slug}`}
-                className="group flex flex-col h-full rounded-2xl overflow-hidden bg-white dark:bg-[#1A1829] border border-[#EDEAF5] dark:border-[#2D2945] hover:border-[#7C3AED]/50 dark:hover:border-[#8B5CF6]/50 transition-all duration-300 hover:shadow-lg dark:hover:shadow-2xl dark:hover:shadow-purple-500/10 flex-1"
-              >
-                {/* Card Artwork Header */}
-                <div className="relative aspect-[16/10] w-full overflow-hidden bg-black shrink-0 border-b border-[#EDEAF5] dark:border-[#2D2945]">
-                  <div className="w-full h-full transform transition-transform duration-700 group-hover:scale-105">
-                    <ArtworkRenderer artworkId={artworkId} className="w-full h-full object-cover" />
-                  </div>
-
-                  {/* Live Pill Badge */}
-                  <div className="absolute top-3.5 left-3.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-xs font-semibold text-[#4ADE80]">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#4ADE80] animate-pulse" />
-                    <span>Live • {listenerCount} {listenerCount === 1 ? 'listener' : 'listeners'}</span>
-                  </div>
-
-                  {/* Category Monogram Pill */}
-                  <div className="absolute top-3.5 right-3.5 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-[10px] font-mono text-[#DDD6FE]">
-                    [{artworkId.toUpperCase()}]
-                  </div>
-
-                  {/* Vibe Tag Overlay */}
-                  <div className="absolute bottom-3 left-3.5 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-[11px] font-medium text-white">
-                    {room.vibeTag}
-                  </div>
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-medium text-[#10B981] flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
+                    LIVE · {room.listenerCount} listening
+                  </span>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-[var(--bg-recessed)] text-[var(--text-muted)] border border-[var(--border-subtle)]">
+                    {room.vibeTag || 'Live Room'}
+                  </span>
                 </div>
 
-                {/* Card Details */}
-                <div className="flex flex-col flex-1 p-5 sm:p-6 justify-between">
-                  <div>
-                    <h3 className="font-headline text-lg sm:text-xl font-bold text-[#12101F] dark:text-white group-hover:text-[#7C3AED] dark:group-hover:text-[#DDD6FE] transition-colors leading-snug">
+                <div className="mt-3.5 flex items-center gap-3.5">
+                  {/* Tactile Vinyl Sleeve Preview */}
+                  <div className="relative w-[72px] h-[72px] shrink-0">
+                    <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-14 h-14 rounded-full bg-[#0E0E13] border border-[#2D2945] flex items-center justify-center shadow-md">
+                      <div className="w-5 h-5 rounded-full border border-[#8B5CF6]/40 bg-[#181624] flex items-center justify-center">
+                        <div className="w-1 h-1 rounded-full bg-[#0E0E13]" />
+                      </div>
+                    </div>
+                    <div className="relative w-[72px] h-[72px] rounded-lg overflow-hidden bg-[#181624] border border-[var(--border-subtle)] shadow-md">
+                      <img
+                        src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=300&auto=format&fit=crop&q=80"
+                        alt={room.title}
+                        className="w-full h-full object-cover scale-[1.35]"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-syne font-bold text-sm text-[var(--text-primary)] truncate">
                       {room.title}
                     </h3>
-                    <p className="mt-2 text-xs sm:text-sm text-[#5E5873] dark:text-[#A19EB5] line-clamp-2 leading-relaxed">
-                      {room.description || 'Intimate collaborative soundscape curated on NOCTURNE.'}
+                    <p className="text-xs text-[var(--text-muted)] mt-0.5 truncate">
+                      Hosted by {room.host?.name || 'Curator'}
                     </p>
                   </div>
+                </div>
+              </div>
 
-                  {/* Card Baseline Footer */}
-                  <div className="mt-6 pt-4 border-t border-[#EDEAF5] dark:border-[#2D2945] flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-[#7C3AED] to-[#F43F5E] p-[1px] flex items-center justify-center">
-                        <div className="w-full h-full bg-white dark:bg-[#1A1829] rounded-full flex items-center justify-center text-[10px] font-bold text-[#12101F] dark:text-white">
-                          {room.host?.name?.charAt(0) || 'N'}
-                        </div>
+              <div className="mt-4 pt-3 border-t border-[var(--border-subtle)] flex items-center justify-between gap-2">
+                <span className="text-[11px] text-[var(--text-muted)] flex items-center gap-1">
+                  <Users className="w-3 h-3" />
+                  <span>{room.listenerCount} in room</span>
+                </span>
+                <Link
+                  href={`/room/${room.slug}`}
+                  className="h-8 px-3.5 rounded-md bg-[#111115] text-white dark:bg-[#F4F4F6] dark:text-[#111115] hover:opacity-90 font-medium text-xs flex items-center justify-center transition-opacity"
+                >
+                  Tune In →
+                </Link>
+              </div>
+            </article>
+          );
+        })}
+
+        {/* 2. Curated Starter Tapes */}
+        {filteredTapes.map((tape) => {
+          const isThisTapeLaunching = launchingTapeId === tape.id;
+          const coverTrack = tape.tracks[0];
+
+          return (
+            <article
+              key={tape.id}
+              className="rounded-xl bg-[var(--bg-panel)] border border-[var(--border-subtle)] p-4 flex flex-col justify-between hover:border-[#8B5CF6]/40 transition-colors shadow-sm"
+            >
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-medium text-[#8B5CF6] flex items-center gap-1.5">
+                    <Disc className="w-3.5 h-3.5 shrink-0" />
+                    STARTER TAPE · {tape.tracks.length} tracks
+                  </span>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-[var(--bg-recessed)] text-[var(--text-muted)] border border-[var(--border-subtle)]">
+                    {tape.mood}
+                  </span>
+                </div>
+
+                <div className="mt-3.5 flex items-center gap-3.5">
+                  {/* Tactile Vinyl Sleeve Preview */}
+                  <div className="relative w-[72px] h-[72px] shrink-0">
+                    <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-14 h-14 rounded-full bg-[#0E0E13] border border-[#2D2945] flex items-center justify-center shadow-md">
+                      <div className="w-5 h-5 rounded-full border border-[#8B5CF6]/40 bg-[#181624] flex items-center justify-center">
+                        <div className="w-1 h-1 rounded-full bg-[#0E0E13]" />
                       </div>
-                      <span className="text-xs text-[#5E5873] dark:text-[#A19EB5]">
-                        Curated by <span className="text-[#12101F] dark:text-white font-medium">{room.host?.name || 'Guest Curator'}</span>
-                      </span>
                     </div>
+                    <div className="relative w-[72px] h-[72px] rounded-lg overflow-hidden bg-[#181624] border border-[var(--border-subtle)] shadow-md">
+                      <img
+                        src={coverTrack?.thumbnailUrl || 'https://i.ytimg.com/vi/A7ZxRs45tTg/hqdefault.jpg'}
+                        alt={tape.title}
+                        onError={(e) => {
+                          e.currentTarget.src = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=300&auto=format&fit=crop&q=80';
+                        }}
+                        className="w-full h-full object-cover scale-[1.35]"
+                      />
+                    </div>
+                  </div>
 
-                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#7C3AED] dark:text-[#8B5CF6] group-hover:text-[#F43F5E] dark:group-hover:text-[#FF5C8A] transition-colors">
-                      <span>Listen In</span>
-                      <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-                    </span>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-syne font-bold text-sm text-[var(--text-primary)] truncate">
+                      {tape.title}
+                    </h3>
+                    <p className="text-xs text-[var(--text-muted)] mt-0.5 line-clamp-2 leading-relaxed">
+                      {tape.subtitle}
+                    </p>
                   </div>
                 </div>
-              </Link>
-            );
-          })
-        )}
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-[var(--border-subtle)] flex items-center justify-between gap-2">
+                <span className="text-[11px] text-[var(--text-muted)]">
+                  {tape.totalDurationLabel}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleLaunchTape(tape)}
+                  disabled={Boolean(launchingTapeId)}
+                  className="h-8 px-3.5 rounded-md bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[#8B5CF6]/40 text-[var(--text-primary)] font-medium text-xs flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50"
+                >
+                  {isThisTapeLaunching ? (
+                    <>
+                      <Loader2 className="w-3 h-3 animate-spin text-[#8B5CF6]" />
+                      <span>Launching...</span>
+                    </>
+                  ) : (
+                    <span>▶ Launch Room</span>
+                  )}
+                </button>
+              </div>
+            </article>
+          );
+        })}
       </div>
     </section>
   );
