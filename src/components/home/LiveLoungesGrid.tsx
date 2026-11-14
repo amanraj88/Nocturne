@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useLounge } from '@/context/LoungeContext';
+import { Room } from '@/types';
 import { STARTER_TAPES, StarterTape, TapeMood } from '@/data/starterTapes';
 import { Disc, Users, Loader2, Radio } from 'lucide-react';
 
@@ -12,6 +13,25 @@ const CATEGORIES: Array<'All Rooms' | TapeMood> = [
   'Electronic',
   'Ambient',
 ];
+
+const getLiveRoomCover = (room: Room): string | null => {
+  const current = (room as any).currentTrack;
+  if (current?.thumbnailUrl) return current.thumbnailUrl;
+  if (current?.albumArt) return current.albumArt;
+
+  const firstQueue = (room as any).queue?.[0];
+  if (firstQueue?.thumbnailUrl) return firstQueue.thumbnailUrl;
+  if (firstQueue?.albumArt) return firstQueue.albumArt;
+
+  const matchingTape = STARTER_TAPES.find(
+    (t) => t.title.trim().toLowerCase() === room.title?.trim().toLowerCase()
+  );
+  if (matchingTape?.tracks?.[0]?.thumbnailUrl) {
+    return matchingTape.tracks[0].thumbnailUrl;
+  }
+
+  return null;
+};
 
 export const LiveLoungesGrid: React.FC = () => {
   const router = useRouter();
@@ -32,7 +52,13 @@ export const LiveLoungesGrid: React.FC = () => {
     );
   });
 
+  // Filter out any Starter Tape whose title already matches an active Live Room
   const filteredTapes = STARTER_TAPES.filter((tape) => {
+    const isAlreadyLive = activeRooms.some(
+      (r) => r.title.trim().toLowerCase() === tape.title.trim().toLowerCase()
+    );
+    if (isAlreadyLive) return false;
+
     if (activeCategory === 'All Rooms') return true;
     return tape.mood === activeCategory;
   });
@@ -101,6 +127,8 @@ export const LiveLoungesGrid: React.FC = () => {
       <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {/* 1. Live Rooms (if any match category) */}
         {filteredLiveRooms.map((room) => {
+          const coverUrl = getLiveRoomCover(room);
+
           return (
             <article
               key={room.id}
@@ -126,11 +154,31 @@ export const LiveLoungesGrid: React.FC = () => {
                       </div>
                     </div>
                     <div className="relative w-[72px] h-[72px] rounded-lg overflow-hidden bg-[#181624] border border-[var(--border-subtle)] shadow-md">
-                      <img
-                        src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=300&auto=format&fit=crop&q=80"
-                        alt={room.title}
-                        className="w-full h-full object-cover scale-[1.35]"
-                      />
+                      {coverUrl ? (
+                        <img
+                          src={coverUrl}
+                          alt={room.title}
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                            if (e.currentTarget.nextElementSibling) {
+                              (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'block';
+                            }
+                          }}
+                          className="w-full h-full object-cover scale-[1.35]"
+                        />
+                      ) : null}
+                      <div
+                        style={{ display: coverUrl ? 'none' : 'block' }}
+                        className="w-full h-full bg-[#0E0E13] flex items-center justify-center"
+                      >
+                        <svg viewBox="0 0 100 100" className="w-full h-full p-1">
+                          <circle cx="50" cy="50" r="48" fill="#0E0E13" stroke="#2D2945" strokeWidth="2" />
+                          <circle cx="50" cy="50" r="38" fill="none" stroke="#1A1829" strokeWidth="1" />
+                          <circle cx="50" cy="50" r="28" fill="none" stroke="#1A1829" strokeWidth="1" />
+                          <circle cx="50" cy="50" r="18" fill="#181624" stroke="#8B5CF6" strokeWidth="1.5" />
+                          <circle cx="50" cy="50" r="4" fill="#0E0E13" />
+                        </svg>
+                      </div>
                     </div>
                   </div>
 
@@ -161,7 +209,7 @@ export const LiveLoungesGrid: React.FC = () => {
           );
         })}
 
-        {/* 2. Curated Starter Tapes */}
+        {/* 2. Curated Starter Tapes (Deduplicated) */}
         {filteredTapes.map((tape) => {
           const isThisTapeLaunching = launchingTapeId === tape.id;
           const coverTrack = tape.tracks[0];

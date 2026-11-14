@@ -16,6 +16,25 @@ const CATEGORIES = [
   'Ambient',
 ];
 
+const getLiveRoomCover = (room: Room): string | null => {
+  const current = (room as any).currentTrack;
+  if (current?.thumbnailUrl) return current.thumbnailUrl;
+  if (current?.albumArt) return current.albumArt;
+
+  const firstQueue = (room as any).queue?.[0];
+  if (firstQueue?.thumbnailUrl) return firstQueue.thumbnailUrl;
+  if (firstQueue?.albumArt) return firstQueue.albumArt;
+
+  const matchingTape = STARTER_TAPES.find(
+    (t) => t.title.trim().toLowerCase() === room.title?.trim().toLowerCase()
+  );
+  if (matchingTape?.tracks?.[0]?.thumbnailUrl) {
+    return matchingTape.tracks[0].thumbnailUrl;
+  }
+
+  return null;
+};
+
 export default function RoomsPage() {
   const router = useRouter();
   const { setIsCreateRoomOpen, launchStarterTape } = useLounge();
@@ -79,6 +98,12 @@ export default function RoomsPage() {
   });
 
   const filteredTapes = STARTER_TAPES.filter((tape) => {
+    // Filter out any Starter Tape whose title already matches an active Live Room
+    const isAlreadyLive = rooms.some(
+      (r) => !r.isFeatured && r.id && r.title?.trim().toLowerCase() === tape.title.trim().toLowerCase()
+    );
+    if (isAlreadyLive) return false;
+
     // 1. Category filter
     if (activeCategory !== 'All Lounges') {
       if (tape.mood !== activeCategory) return false;
@@ -237,66 +262,90 @@ export default function RoomsPage() {
             {!loading && !error && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                 {/* 1. Filtered Live Rooms */}
-                {filteredRooms.map((room) => (
-                  <article
-                    key={room.id}
-                    className="rounded-xl bg-[var(--bg-panel)] border border-[var(--border-subtle)] p-4 flex flex-col justify-between hover:border-[#8B5CF6]/40 transition-colors shadow-sm"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-medium text-[#10B981] flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
-                          LIVE · {room.listenerCount} listening
-                        </span>
-                        <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-[var(--bg-recessed)] text-[var(--text-muted)] border border-[var(--border-subtle)]">
-                          {room.vibeTag || 'Live Room'}
-                        </span>
-                      </div>
+                {filteredRooms.map((room) => {
+                  const coverUrl = getLiveRoomCover(room);
 
-                      <div className="mt-3.5 flex items-center gap-3.5">
-                        {/* Tactile Vinyl Sleeve Preview */}
-                        <div className="relative w-[72px] h-[72px] shrink-0">
-                          <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-14 h-14 rounded-full bg-[#0E0E13] border border-[#2D2945] flex items-center justify-center shadow-md">
-                            <div className="w-5 h-5 rounded-full border border-[#8B5CF6]/40 bg-[#181624] flex items-center justify-center">
-                              <div className="w-1 h-1 rounded-full bg-[#0E0E13]" />
+                  return (
+                    <article
+                      key={room.id}
+                      className="rounded-xl bg-[var(--bg-panel)] border border-[var(--border-subtle)] p-4 flex flex-col justify-between hover:border-[#8B5CF6]/40 transition-colors shadow-sm"
+                    >
+                      <div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-medium text-[#10B981] flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
+                            LIVE · {room.listenerCount} listening
+                          </span>
+                          <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-[var(--bg-recessed)] text-[var(--text-muted)] border border-[var(--border-subtle)]">
+                            {room.vibeTag || 'Live Room'}
+                          </span>
+                        </div>
+
+                        <div className="mt-3.5 flex items-center gap-3.5">
+                          {/* Tactile Vinyl Sleeve Preview */}
+                          <div className="relative w-[72px] h-[72px] shrink-0">
+                            <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-14 h-14 rounded-full bg-[#0E0E13] border border-[#2D2945] flex items-center justify-center shadow-md">
+                              <div className="w-5 h-5 rounded-full border border-[#8B5CF6]/40 bg-[#181624] flex items-center justify-center">
+                                <div className="w-1 h-1 rounded-full bg-[#0E0E13]" />
+                              </div>
+                            </div>
+                            <div className="relative w-[72px] h-[72px] rounded-lg overflow-hidden bg-[#181624] border border-[var(--border-subtle)] shadow-md">
+                              {coverUrl ? (
+                                <img
+                                  src={coverUrl}
+                                  alt={room.title}
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                    if (e.currentTarget.nextElementSibling) {
+                                      (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'block';
+                                    }
+                                  }}
+                                  className="w-full h-full object-cover scale-[1.35]"
+                                />
+                              ) : null}
+                              <div
+                                style={{ display: coverUrl ? 'none' : 'block' }}
+                                className="w-full h-full bg-[#0E0E13] flex items-center justify-center"
+                              >
+                                <svg viewBox="0 0 100 100" className="w-full h-full p-1">
+                                  <circle cx="50" cy="50" r="48" fill="#0E0E13" stroke="#2D2945" strokeWidth="2" />
+                                  <circle cx="50" cy="50" r="38" fill="none" stroke="#1A1829" strokeWidth="1" />
+                                  <circle cx="50" cy="50" r="28" fill="none" stroke="#1A1829" strokeWidth="1" />
+                                  <circle cx="50" cy="50" r="18" fill="#181624" stroke="#8B5CF6" strokeWidth="1.5" />
+                                  <circle cx="50" cy="50" r="4" fill="#0E0E13" />
+                                </svg>
+                              </div>
                             </div>
                           </div>
-                          <div className="relative w-[72px] h-[72px] rounded-lg overflow-hidden bg-[#181624] border border-[var(--border-subtle)] shadow-md">
-                            <img
-                              src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=300&auto=format&fit=crop&q=80"
-                              alt={room.title}
-                              className="w-full h-full object-cover scale-[1.35]"
-                            />
+
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-syne font-bold text-sm text-[var(--text-primary)] truncate">
+                              {room.title}
+                            </h3>
+                            <p className="text-xs text-[var(--text-muted)] mt-0.5 truncate">
+                              Hosted by {room.host?.name || 'Curator'}
+                            </p>
                           </div>
                         </div>
-
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-syne font-bold text-sm text-[var(--text-primary)] truncate">
-                            {room.title}
-                          </h3>
-                          <p className="text-xs text-[var(--text-muted)] mt-0.5 truncate">
-                            Hosted by {room.host?.name || 'Curator'}
-                          </p>
-                        </div>
                       </div>
-                    </div>
 
-                    <div className="mt-4 pt-3 border-t border-[var(--border-subtle)] flex items-center justify-between gap-2">
-                      <span className="text-[11px] text-[var(--text-muted)] flex items-center gap-1">
-                        <Users className="w-3 h-3" />
-                        <span>{room.listenerCount} in room</span>
-                      </span>
-                      <Link
-                        href={`/room/${room.slug}`}
-                        className="h-8 px-3.5 rounded-md bg-[#111115] text-white dark:bg-[#F4F4F6] dark:text-[#111115] hover:opacity-90 font-medium text-xs flex items-center justify-center transition-opacity"
-                      >
-                        Tune In →
-                      </Link>
-                    </div>
-                  </article>
-                ))}
+                      <div className="mt-4 pt-3 border-t border-[var(--border-subtle)] flex items-center justify-between gap-2">
+                        <span className="text-[11px] text-[var(--text-muted)] flex items-center gap-1">
+                          <Users className="w-3 h-3" />
+                          <span>{room.listenerCount} in room</span>
+                        </span>
+                        <Link
+                          href={`/room/${room.slug}`}
+                          className="h-8 px-3.5 rounded-md bg-[#111115] text-white dark:bg-[#F4F4F6] dark:text-[#111115] hover:opacity-90 font-medium text-xs flex items-center justify-center transition-opacity"
+                        >
+                          Tune In →
+                        </Link>
+                      </div>
+                    </article>
+                  );
+                })}
 
-                {/* 2. Filtered Starter Tapes */}
+                {/* 2. Filtered Starter Tapes (Deduplicated) */}
                 {filteredTapes.map((tape) => {
                   const isThisTapeLaunching = launchingTapeId === tape.id;
                   const coverTrack = tape.tracks[0];

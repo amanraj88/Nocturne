@@ -35,6 +35,7 @@ export default function RoomPage() {
   } = useLounge();
 
   const [isMounted, setIsMounted] = useState(false);
+  const [isLeaving, setIsLeaving] = useState(false);
   const [mobileTab, setMobileTab] = useState<'stage' | 'dock'>('stage');
   const [isCopied, setIsCopied] = useState(false);
   const [isAvatarPopoverOpen, setIsAvatarPopoverOpen] = useState(false);
@@ -95,12 +96,18 @@ export default function RoomPage() {
   };
 
   const handleExitRoom = async () => {
-    if (isHost) {
-      await endRoom();
-    } else {
-      await leaveRoom();
+    setIsLeaving(true);
+    try {
+      if (isHost) {
+        await endRoom();
+      } else {
+        await leaveRoom();
+      }
+    } catch (e) {
+      console.warn('[NOCTURNE] Exit room error:', e);
+    } finally {
+      void router.replace('/rooms');
     }
-    void router.push('/rooms');
   };
 
   const pageTitle =
@@ -157,7 +164,14 @@ export default function RoomPage() {
         />
       </Head>
 
-      {!isMounted || roomLoadState !== 'ready' || !currentRoom?.id ? (
+      {isLeaving ? (
+        <main className="min-h-screen bg-[var(--bg-canvas)] text-[var(--text-primary)] flex items-center justify-center p-4">
+          <div className="flex flex-col items-center gap-3">
+            <span className="w-3 h-3 rounded-full bg-[#8B5CF6] inline-block animate-ping" />
+            <p className="text-xs font-mono text-[var(--text-muted)]">Leaving room...</p>
+          </div>
+        </main>
+      ) : !isMounted || roomLoadState !== 'ready' || !currentRoom?.id ? (
         <main className="min-h-[calc(100dvh-52px)] bg-[var(--bg-canvas)] text-[var(--text-primary)] flex items-center justify-center px-4 py-12">
           <section
             className="w-full max-w-md border border-[var(--border-subtle)] bg-[var(--bg-panel)] p-8 text-center rounded-2xl shadow-xl transition-colors"

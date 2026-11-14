@@ -2774,6 +2774,18 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const launchStarterTape = async (tape: StarterTape): Promise<Room> => {
+    // If an active live room with this title or slug already exists, return it immediately
+    const existing = rooms.find(
+      (r) =>
+        !r.isFeatured &&
+        r.id &&
+        (r.title.trim().toLowerCase() === tape.title.trim().toLowerCase() ||
+          r.slug.trim().toLowerCase() === tape.id.trim().toLowerCase())
+    );
+    if (existing && existing.slug) {
+      return existing;
+    }
+
     const artworkId = tape.mood === 'Electronic' ? 'noc-03' : tape.mood === 'Late Night' ? 'noc-01' : 'noc-02';
     const newRoom = await createRoom({
       title: tape.title,
@@ -2782,18 +2794,25 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       artworkId,
     });
 
+    // Seed tape tracks in FIFO order non-blockingly so the caller navigates immediately
     if (tape.tracks && tape.tracks.length > 0) {
-      for (const track of tape.tracks) {
-        await addTrackToQueue({
-          title: track.title,
-          artist: track.artist,
-          youtubeId: track.youtubeId,
-          durationSeconds: track.durationSeconds,
-          albumArt: track.thumbnailUrl,
-          artworkId,
-          sourceType: 'youtube',
-        });
-      }
+      void (async () => {
+        for (const track of tape.tracks) {
+          try {
+            await addTrackToQueue({
+              title: track.title,
+              artist: track.artist,
+              youtubeId: track.youtubeId,
+              durationSeconds: track.durationSeconds,
+              albumArt: track.thumbnailUrl,
+              artworkId,
+              sourceType: 'youtube',
+            });
+          } catch (e) {
+            console.warn('[NOCTURNE] Failed to seed starter track:', e);
+          }
+        }
+      })();
     }
 
     return newRoom;

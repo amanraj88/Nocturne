@@ -1,14 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useLounge } from '@/context/LoungeContext';
-import { Radio, X, Plus, Sparkles, Loader2 } from 'lucide-react';
+import { Disc, X, Plus, Loader2 } from 'lucide-react';
+
+const PRESET_TITLES = [
+  'Midnight Frequencies',
+  'After Hours Vinyl',
+  'Late Night Coding',
+];
+
+const MOOD_OPTIONS = ['Late Night', 'Deep Focus', 'Electronic', 'Ambient'] as const;
 
 export const CreateRoomModal: React.FC = () => {
   const router = useRouter();
-  const { isCreateRoomOpen, setIsCreateRoomOpen, createRoom } = useLounge();
+  const { isCreateRoomOpen, setIsCreateRoomOpen, createRoom, addTrackToQueue } = useLounge();
   const [title, setTitle] = useState('');
-  const [vibeTag, setVibeTag] = useState('');
-  const [description, setDescription] = useState('');
+  const [selectedMood, setSelectedMood] = useState<typeof MOOD_OPTIONS[number]>('Late Night');
+  const [starterYoutubeUrl, setStarterYoutubeUrl] = useState('');
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
@@ -29,13 +37,42 @@ export const CreateRoomModal: React.FC = () => {
     if (!title.trim() || creating) return;
     setCreating(true);
     setCreateError(null);
+
     try {
-      const newRoom = await createRoom({ title, vibeTag, description, mode: 'collaborative' });
+      const artworkId =
+        selectedMood === 'Electronic' ? 'noc-03' : selectedMood === 'Late Night' ? 'noc-01' : 'noc-02';
+
+      const newRoom = await createRoom({
+        title: title.trim(),
+        vibeTag: selectedMood,
+        mode: 'collaborative',
+        artworkId,
+      });
+
+      // If optional starter YouTube URL was provided, enqueue it immediately
+      if (starterYoutubeUrl.trim()) {
+        const url = starterYoutubeUrl.trim();
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+        const match = url.match(regExp);
+        const videoId = match && match[2].length === 11 ? match[2] : null;
+
+        if (videoId) {
+          void addTrackToQueue({
+            title: title.trim() + ' — Opening Track',
+            artist: 'YouTube',
+            youtubeId: videoId,
+            durationSeconds: 180,
+            albumArt: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+            artworkId,
+            sourceType: 'youtube',
+          });
+        }
+      }
+
       setIsCreateRoomOpen(false);
       setTitle('');
-      setVibeTag('');
-      setDescription('');
-      router.push(`/room/${newRoom.slug}`);
+      setStarterYoutubeUrl('');
+      void router.push(`/room/${newRoom.slug}`);
     } catch (error) {
       setCreateError(error instanceof Error ? error.message : 'Could not create this room. Try again.');
     } finally {
@@ -48,7 +85,7 @@ export const CreateRoomModal: React.FC = () => {
       role="dialog"
       aria-modal="true"
       aria-labelledby="create-lounge-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0F0E17]/85 backdrop-blur-md animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
     >
       <div
         className="fixed inset-0"
@@ -57,98 +94,127 @@ export const CreateRoomModal: React.FC = () => {
         }}
       />
 
-      <div className="relative z-10 w-full max-w-lg rounded-2xl bg-white dark:bg-[#1A1829] border border-[#EDEAF5] dark:border-[#2D2945] shadow-2xl overflow-hidden transition-colors">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#EDEAF5] dark:border-[#2D2945] bg-[#F8F7FC] dark:bg-[#12101F]/80">
-          <div className="flex items-center gap-2.5">
-            <span className="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#7C3AED] to-[#F43F5E] flex items-center justify-center text-white shadow-md">
-              <Radio className="w-4 h-4" />
+      <div className="relative z-10 w-full max-w-[460px] rounded-xl bg-[var(--bg-panel)] border border-[var(--border-subtle)] shadow-2xl overflow-hidden transition-colors">
+        {/* Modal Header */}
+        <div className="px-6 py-4 border-b border-[var(--border-subtle)] flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="w-9 h-9 rounded-lg bg-[var(--bg-recessed)] border border-[var(--border-subtle)] flex items-center justify-center text-[#8B5CF6] shrink-0">
+              <Disc className="w-[18px] h-[18px]" />
             </span>
             <div>
-              <h3 id="create-lounge-title" className="font-headline text-base font-bold text-[#12101F] dark:text-white tracking-tight">
-                Create a Listening Room
+              <h3 id="create-lounge-title" className="font-syne text-base font-bold text-[var(--text-primary)] tracking-tight">
+                Start a Listening Room
               </h3>
-              <p className="text-[11px] text-[#5E5873] dark:text-[#A19EB5]">Collaborative session with shared queue</p>
+              <p className="text-xs text-[var(--text-muted)]">Synced playback · Shared FIFO queue</p>
             </div>
           </div>
           <button
             type="button"
             disabled={creating}
             onClick={() => setIsCreateRoomOpen(false)}
-            className="p-1.5 rounded-full text-[#5E5873] dark:text-[#A19EB5] hover:text-[#12101F] dark:hover:text-white hover:bg-[#F3F0FA] dark:hover:bg-[#242138] transition-colors"
+            className="w-8 h-8 rounded-lg bg-[var(--bg-recessed)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
             aria-label="Close dialog"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <div>
-            <label htmlFor="lounge-title" className="block text-xs font-semibold text-[#7C3AED] dark:text-[#DDD6FE] mb-1.5">
-              Room Title *
-            </label>
-            <input
-              id="lounge-title"
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              minLength={2}
-              maxLength={60}
-              placeholder="e.g. Kyoto Midnight Synthesizers"
-              required
-              className="w-full rounded-xl bg-white dark:bg-[#242138] border border-[#EDEAF5] dark:border-[#2D2945] px-3.5 py-2.5 text-xs sm:text-sm text-[#12101F] dark:text-white placeholder-[#8E88A8] dark:placeholder-[#6B6785] focus:outline-none focus:border-[#7C3AED] dark:focus:border-[#8B5CF6] focus:ring-1 focus:ring-[#7C3AED] dark:focus:ring-[#8B5CF6] transition-colors shadow-xs"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="vibe-tag" className="block text-xs font-semibold text-[#7C3AED] dark:text-[#DDD6FE] mb-1.5">
-              Sonic Tag / Vibe
-            </label>
-            <input
-              id="vibe-tag"
-              type="text"
-              value={vibeTag}
-              onChange={(e) => setVibeTag(e.target.value)}
-              maxLength={80}
-              placeholder="e.g. Ambient Glitch &amp; Modular"
-              className="w-full rounded-xl bg-white dark:bg-[#242138] border border-[#EDEAF5] dark:border-[#2D2945] px-3.5 py-2.5 text-xs sm:text-sm text-[#12101F] dark:text-white placeholder-[#8E88A8] dark:placeholder-[#6B6785] focus:outline-none focus:border-[#7C3AED] dark:focus:border-[#8B5CF6] focus:ring-1 focus:ring-[#7C3AED] dark:focus:ring-[#8B5CF6] transition-colors shadow-xs"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="lounge-desc" className="block text-xs font-semibold text-[#7C3AED] dark:text-[#DDD6FE] mb-1.5">
-              Room Description
-            </label>
-            <textarea
-              id="lounge-desc"
-              rows={3}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              maxLength={500}
-              placeholder="Tell listeners what music or experience to expect in this space..."
-              className="w-full rounded-xl bg-white dark:bg-[#242138] border border-[#EDEAF5] dark:border-[#2D2945] px-3.5 py-2.5 text-xs sm:text-sm text-[#12101F] dark:text-white placeholder-[#8E88A8] dark:placeholder-[#6B6785] focus:outline-none focus:border-[#7C3AED] dark:focus:border-[#8B5CF6] focus:ring-1 focus:ring-[#7C3AED] dark:focus:ring-[#8B5CF6] transition-colors resize-none shadow-xs"
-            />
-          </div>
-
-          {createError && (
-            <div className="p-3 rounded-xl bg-[#F43F5E]/15 border border-[#F43F5E]/40 text-[#F43F5E] text-xs">
-              {createError}
+        {/* Modal Body */}
+        <form onSubmit={handleSubmit}>
+          <div className="p-6 space-y-5">
+            {/* Field 1: Room Title */}
+            <div>
+              <label htmlFor="room-title-input" className="text-xs font-medium text-[var(--text-primary)] mb-1.5 block">
+                Room Title *
+              </label>
+              <input
+                id="room-title-input"
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                minLength={2}
+                maxLength={60}
+                placeholder="e.g. Midnight Frequencies"
+                required
+                className="w-full h-10 px-3.5 rounded-lg bg-[var(--bg-recessed)] border border-[var(--border-subtle)] focus:border-[#8B5CF6]/60 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none transition-colors"
+              />
+              {/* Quick-fill preset chips */}
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {PRESET_TITLES.map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => setTitle(preset)}
+                    className="px-2 py-0.5 rounded-md bg-[var(--bg-recessed)] border border-[var(--border-subtle)] text-[11px] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
             </div>
-          )}
 
-          <div className="pt-2 flex items-center justify-end gap-3">
+            {/* Field 2: Select Mood (Interactive 4-Chip Selector) */}
+            <div>
+              <label className="text-xs font-medium text-[var(--text-primary)] mb-1.5 block">
+                Room Mood
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {MOOD_OPTIONS.map((mood) => {
+                  const isActive = selectedMood === mood;
+                  return (
+                    <button
+                      key={mood}
+                      type="button"
+                      onClick={() => setSelectedMood(mood)}
+                      className={`h-8 px-3 rounded-lg text-xs font-medium transition-colors text-center truncate ${
+                        isActive
+                          ? 'bg-[var(--bg-thumb)] border border-[#8B5CF6]/50 text-[var(--text-primary)]'
+                          : 'bg-[var(--bg-recessed)] border border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+                      }`}
+                    >
+                      {mood}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Field 3: Optional Starter YouTube URL */}
+            <div>
+              <label htmlFor="starter-youtube-url" className="text-xs font-medium text-[var(--text-primary)] mb-1.5 block">
+                Starter YouTube URL (optional)
+              </label>
+              <input
+                id="starter-youtube-url"
+                type="url"
+                value={starterYoutubeUrl}
+                onChange={(e) => setStarterYoutubeUrl(e.target.value)}
+                placeholder="Paste a YouTube link to play first..."
+                className="w-full h-10 px-3.5 rounded-lg bg-[var(--bg-recessed)] border border-[var(--border-subtle)] focus:border-[#8B5CF6]/60 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none transition-colors"
+              />
+            </div>
+
+            {createError && (
+              <div className="p-3 rounded-lg bg-[#F43F5E]/15 border border-[#F43F5E]/40 text-[#F43F5E] text-xs">
+                {createError}
+              </div>
+            )}
+          </div>
+
+          {/* Modal Footer */}
+          <div className="px-6 py-4 border-t border-[var(--border-subtle)] bg-[var(--bg-recessed)]/40 flex items-center justify-end gap-2.5">
             <button
               type="button"
               disabled={creating}
               onClick={() => setIsCreateRoomOpen(false)}
-              className="px-4 py-2 rounded-full border border-[#EDEAF5] dark:border-[#2D2945] text-xs font-medium text-[#5E5873] dark:text-[#A19EB5] hover:text-[#12101F] dark:hover:text-white hover:bg-[#F3F0FA] dark:hover:bg-[#242138] transition-colors"
+              className="h-9 px-4 rounded-lg bg-[var(--bg-recessed)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={creating || !title.trim()}
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#F43F5E] hover:bg-[#e11d48] dark:bg-[#FF5C8A] dark:hover:bg-[#ff477b] text-white text-xs font-semibold shadow-lg shadow-pink-500/25 disabled:opacity-50 transition-all active:scale-[0.98]"
+              className="h-9 px-4 rounded-lg bg-[#F43F5E] hover:bg-[#E11D48] disabled:opacity-40 text-white text-xs font-medium inline-flex items-center gap-1.5 transition-colors shadow-none"
             >
               {creating ? (
                 <>

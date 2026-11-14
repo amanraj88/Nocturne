@@ -2,8 +2,28 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useLounge } from '@/context/LoungeContext';
+import { Room } from '@/types';
 import { STARTER_TAPES } from '@/data/starterTapes';
-import { Plus, Disc, Loader2, ArrowRight, Radio } from 'lucide-react';
+import { Plus, Disc, Loader2, ArrowRight } from 'lucide-react';
+
+const getLiveRoomCover = (room: Room): string | null => {
+  const current = (room as any).currentTrack;
+  if (current?.thumbnailUrl) return current.thumbnailUrl;
+  if (current?.albumArt) return current.albumArt;
+
+  const firstQueue = (room as any).queue?.[0];
+  if (firstQueue?.thumbnailUrl) return firstQueue.thumbnailUrl;
+  if (firstQueue?.albumArt) return firstQueue.albumArt;
+
+  const matchingTape = STARTER_TAPES.find(
+    (t) => t.title.trim().toLowerCase() === room.title?.trim().toLowerCase()
+  );
+  if (matchingTape?.tracks?.[0]?.thumbnailUrl) {
+    return matchingTape.tracks[0].thumbnailUrl;
+  }
+
+  return null;
+};
 
 export const HeroSection: React.FC = () => {
   const router = useRouter();
@@ -119,6 +139,8 @@ export const HeroSection: React.FC = () => {
           <div className="w-full rounded-xl bg-[var(--bg-panel)] border border-[var(--border-subtle)] p-5 shadow-sm transition-colors">
             {isMounted && spotlightRoom ? (() => {
               const room = spotlightRoom;
+              const coverUrl = getLiveRoomCover(room);
+
               return (
                 /* Live Room Spotlight */
                 <div className="flex flex-col gap-4">
@@ -141,11 +163,31 @@ export const HeroSection: React.FC = () => {
                         </div>
                       </div>
                       <div className="relative w-20 h-20 rounded-lg overflow-hidden bg-[#181624] border border-[var(--border-subtle)] shadow-md">
-                        <img
-                          src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=300&auto=format&fit=crop&q=80"
-                          alt={room.title}
-                          className="w-full h-full object-cover scale-[1.35]"
-                        />
+                        {coverUrl ? (
+                          <img
+                            src={coverUrl}
+                            alt={room.title}
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                              if (e.currentTarget.nextElementSibling) {
+                                (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'block';
+                              }
+                            }}
+                            className="w-full h-full object-cover scale-[1.35]"
+                          />
+                        ) : null}
+                        <div
+                          style={{ display: coverUrl ? 'none' : 'block' }}
+                          className="w-full h-full bg-[#0E0E13] flex items-center justify-center"
+                        >
+                          <svg viewBox="0 0 100 100" className="w-full h-full p-1">
+                            <circle cx="50" cy="50" r="48" fill="#0E0E13" stroke="#2D2945" strokeWidth="2" />
+                            <circle cx="50" cy="50" r="38" fill="none" stroke="#1A1829" strokeWidth="1" />
+                            <circle cx="50" cy="50" r="28" fill="none" stroke="#1A1829" strokeWidth="1" />
+                            <circle cx="50" cy="50" r="18" fill="#181624" stroke="#8B5CF6" strokeWidth="1.5" />
+                            <circle cx="50" cy="50" r="4" fill="#0E0E13" />
+                          </svg>
+                        </div>
                       </div>
                     </div>
 
