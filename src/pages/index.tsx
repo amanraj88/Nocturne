@@ -9,9 +9,9 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>NOCTURNE: Shared Listening for After-Hours Minds</title>
+        <title>NOCTURNE — Music hits different together</title>
       </Head>
-      <div className="flex flex-col min-h-full">
+      <div className="flex flex-col min-h-full pb-32">
         <HeroSection />
         <LiveLoungesGrid />
         <PhilosophySection />

@@ -30,18 +30,38 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
       const { data: dbRoom, error: roomError } = await client
         .from('rooms')
-        .select('id,slug,title,vibe_tag,description,artwork_id,ambient_color,accent_color,is_private,host_id,host_name,created_at')
+        .select('id,slug,title,vibe_tag,description,artwork_id,ambient_color,accent_color,mode,is_private,host_id,host_name,created_at')
         .or(`slug.eq.${id},id.eq.${id},id.eq.room-${id}`)
         .maybeSingle();
 
       if (roomError) {
-        // Database query failed -> 503 Service Unavailable (do NOT fall back to local store)
+        // If remote database connection has a network error, check local fallback
+        const localFallback = roomManager.getRoomState(id);
+        if (localFallback) {
+          return res.status(200).json({
+            room: { ...localFallback.room, listenerCount: localFallback.participants.size },
+            queue: localFallback.queue,
+            playback: localFallback.playback,
+            participants: Array.from(localFallback.participants.values()),
+            chatMessages: localFallback.chatMessages,
+          });
+        }
         return res.status(503).json({ error: 'Database service unavailable. Please try again shortly.' });
       }
 
       if (!dbRoom) {
-        // Genuine missing room in Supabase -> 404 Not Found (do NOT fall back to local store)
+        // Genuine missing room or unauthorized private room -> 404 Not Found
         return res.status(404).json({ error: `Room "${id}" not found` });
+      }
+
+      // Check if room has expired or ended under the 5-minute grace period policy
+      try {
+        const { data: isActive, error: activeError } = await client.rpc('is_room_active', { p_room_id: dbRoom.id });
+        if (!activeError && isActive === false) {
+          return res.status(404).json({ error: `Room "${id}" has expired or closed.` });
+        }
+      } catch (e) {
+        // If RPC fails, fallback to allowing room access
       }
 
       // The visitor-scoped client applies the room RLS policies to every read.
@@ -79,7 +99,37 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       }
 
-      const room = mapDbRoomToRoom(dbRoom, 0);
+      let activeListeners = 0;
+      const participants: Array<{ id: string; name: string; isHost: boolean; joinedAt: number; avatar?: string }> = [];
+      try {
+        const cutoffIso = new Date(Date.now() - 75 * 1000).toISOString();
+        const { data: memberRows, count } = await client
+          .from('room_memberships')
+          .select('user_id, display_name, role, joined_at, last_seen', { count: 'exact' })
+          .eq('room_id', dbRoom.id)
+          .eq('is_active', true)
+          .gte('last_seen', cutoffIso)
+          .order('joined_at', { ascending: true });
+
+        if (Array.isArray(memberRows)) {
+          const seen = new Set<string>();
+          for (const m of memberRows) {
+            if (!m.user_id || seen.has(m.user_id)) continue;
+            seen.add(m.user_id);
+            participants.push({
+              id: m.user_id,
+              name: m.display_name || 'Anonymous Listener',
+              isHost: m.role === 'host' || m.user_id === dbRoom.host_id,
+              joinedAt: m.joined_at ? new Date(m.joined_at).getTime() : Date.now(),
+            });
+          }
+          activeListeners = participants.length;
+        } else if (typeof count === 'number') {
+          activeListeners = count;
+        }
+      } catch (e) {}
+
+      const room = mapDbRoomToRoom(dbRoom, activeListeners);
       const queue = rawTracks.map((row) => {
         const mapped = mapDbTrackToTrack(row);
         if (row.storage_path && signedUrlMap.has(row.storage_path)) {
@@ -96,7 +146,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         room,
         queue,
         playback,
-        participants: [],
+        participants,
         chatMessages,
       });
     } catch (err: any) {

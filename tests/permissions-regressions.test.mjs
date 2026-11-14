@@ -106,3 +106,54 @@ test('configured production does not expose process-local action or SSE state', 
   assert.match(read('../src/pages/api/rooms/[id]/action.ts'), /isSupabaseConfigured\(\)[\s\S]*status\(404\)/);
   assert.match(read('../src/pages/api/rooms/[id]/events.ts'), /isSupabaseConfigured\(\)[\s\S]*status\(404\)/);
 });
+const realtimeFix = read('../supabase/migrations/20261112_realtime_presence_and_publications.sql');
+
+test('private room Realtime authorization separates Presence packets from broadcasts', () => {
+  assert.match(realtimeFix, /extension IN \('presence', 'broadcast'\)/);
+  assert.match(realtimeFix, /extension = 'presence'[\s\S]*?OR \([\s\S]*?extension = 'broadcast'/);
+  assert.match(realtimeFix, /payload->>'senderId'[\s\S]*?= auth\.uid\(\)::text/);
+  assert.match(realtimeFix, /has_room_access\([\s\S]*?realtime\.topic\(\)/);
+});
+
+test('room channel tracks authenticated presence and deduplicates by anonymous auth identity', () => {
+  const lounge = read('../src/context/LoungeContext.tsx');
+  assert.match(lounge, /presence:\s*\{\s*key:\s*`\$\{effectiveUid\}:\$\{clientId\}`\s*\}/);
+  assert.match(lounge, /await channel\.track\(/);
+  assert.match(lounge, /const uniqueUsers = new Map<string, UserProfile>\(\)/);
+  assert.match(lounge, /listenerCount: membersList\.length/);
+});
+
+test('YouTube URL queueing waits for verified metadata and successful persistence', () => {
+  const queueDock = read('../src/components/lounge/QueueDock.tsx');
+  const modal = read('../src/components/lounge/SearchModal.tsx');
+  const info = read('../src/pages/api/youtube/info.ts');
+  const lounge = read('../src/context/LoungeContext.tsx');
+  assert.match(queueDock, /Add YouTube URL/);
+  assert.match(modal, /disabled=\{isFetchingInfo \|\| !pasteInfo/);
+  assert.match(modal, /const didAdd = await addTrackToQueue/);
+  assert.match(lounge, /\.from\('tracks'\)\.insert\([\s\S]*?source_type: inferredSource === 'youtube' \? 'youtube'/);
+  assert.match(info, /status\(503\)\.json\([\s\S]*?valid: false/);
+  assert.match(read('../src/components/lounge/VinylStage.tsx'), /code === 101 \|\| code === 150/);
+});
+test('persisted inserts refresh peers even if a Realtime Broadcast is missed', () => {
+  assert.match(realtimeFix, /ALTER PUBLICATION supabase_realtime ADD TABLE public\.chat_messages/);
+  assert.match(realtimeFix, /ALTER PUBLICATION supabase_realtime ADD TABLE public\.tracks/);
+  const lounge = read('../src/context/LoungeContext.tsx');
+  assert.match(lounge, /postgres_changes'[\s\S]*?table: 'chat_messages'[\s\S]*?refreshPersistedRoomState/);
+  assert.match(lounge, /postgres_changes'[\s\S]*?table: 'tracks'[\s\S]*?refreshPersistedRoomState/);
+});
+test('chat and queue Broadcasts without a playback type pass the null-safe policy branch', () => {
+  assert.match(realtimeFix, /\(payload->>'type'\) IS NULL[\s\S]*?NOT IN \('SYNC_PLAYBACK', 'PLAYBACK_CONTROL'\)/);
+});
+
+const realtimePolicyCorrection = read('../supabase/migrations/20261112_realtime_broadcast_policy_correction.sql');
+
+test('playback Broadcast authorization matches app event names and validates saved state', () => {
+  assert.match(realtimePolicyCorrection, /COALESCE\(payload->>'type', ''\) NOT IN \('PLAY', 'PAUSE', 'SEEK', 'SELECT_TRACK'\)/);
+  assert.match(realtimePolicyCorrection, /COALESCE\(event, ''\) <> 'playback'/);
+  assert.match(realtimePolicyCorrection, /p\.updated_by = auth\.uid\(\)[\s\S]*?p\.revision::text = payload->>'revision'[\s\S]*?p\.current_track_id::text IS NOT DISTINCT FROM payload->>'trackId'/);
+  assert.match(realtimePolicyCorrection, /r\.mode = 'host-curated'[\s\S]*?r\.host_id IS DISTINCT FROM auth\.uid\(\)/);
+  assert.match(realtimePolicyCorrection, /COALESCE\(event, ''\) = 'room_ended'[\s\S]*?r\.host_id IS DISTINCT FROM auth\.uid\(\)/);
+  assert.doesNotMatch(realtimePolicyCorrection, /payload->>'senderId'/);
+  assert.doesNotMatch(realtimePolicyCorrection, /SYNC_PLAYBACK|PLAYBACK_CONTROL/);
+});

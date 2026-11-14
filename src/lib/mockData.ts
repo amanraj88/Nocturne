@@ -1,4 +1,4 @@
-import { Room, Track, UserProfile, ChatMessage } from '@/types';
+import type { Room, Track, UserProfile, ChatMessage } from '@/types';
 
 const NOCTURNE_CURATOR: UserProfile = {
   id: 'nocturne-editorial',

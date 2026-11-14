@@ -2,18 +2,31 @@ import React, { useState } from 'react';
 import { useLounge } from '@/context/LoungeContext';
 import { ArtworkRenderer } from '@/components/artwork';
 import { formatTime } from '@/lib/utils';
-import { Plus, Trash2, ArrowUp, Disc3, Upload, AlertCircle } from 'lucide-react';
+import {
+  Plus,
+  Trash2,
+  ArrowUp,
+  Disc3,
+  Upload,
+  AlertCircle,
+  GripVertical,
+  Link as LinkIcon,
+  Loader2,
+  Info,
+  Radio,
+  Check,
+} from 'lucide-react';
 import { Track } from '@/types';
 
 const TrackThumb: React.FC<{ track: Track; isCurrent: boolean }> = ({ track, isCurrent }) => {
   const artworkId = track.artworkId || 'noc-01';
 
   return (
-    <div className="relative w-9 h-9 rounded-[2px] overflow-hidden shrink-0 bg-deep-ink border border-graphite">
-      <ArtworkRenderer artworkId={artworkId} className="w-full h-full" />
+    <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-[#0F0E17] border border-[#2D2945]">
+      <ArtworkRenderer artworkId={artworkId} className="w-full h-full object-cover" />
       {isCurrent && (
-        <div className="absolute inset-0 bg-deep-ink/40 flex items-center justify-center">
-          <span className="w-2 h-2 rounded-full bg-mineral animate-pulse" />
+        <div className="absolute inset-0 bg-[#0F0E17]/40 flex items-center justify-center">
+          <span className="w-2 h-2 rounded-full bg-[#4ADE80] animate-pulse" />
         </div>
       )}
     </div>
@@ -22,62 +35,110 @@ const TrackThumb: React.FC<{ track: Track; isCurrent: boolean }> = ({ track, isC
 
 export const QueueDock: React.FC = () => {
   const {
+    currentRoom,
     queue,
     currentTrack,
     voteSkip,
     removeTrack,
     selectTrack,
     setIsSearchOpen,
+    addTrackToQueue,
     loadLocalAudioFiles,
     shareLocalAudioFile,
     sharingTrackId,
     audioError,
   } = useLounge();
 
-  const [isDragOver, setIsDragOver] = useState(false);
+  const [activeTab, setActiveTab] = useState<'queue' | 'info'>('queue');
+  const [youtubeInputUrl, setYoutubeInputUrl] = useState('');
+  const [isAddingUrl, setIsAddingUrl] = useState(false);
+  const [inputError, setInputError] = useState<string | null>(null);
 
-  const handleDrop = (e: React.DragEvent) => {
+  // Directly handle adding a YouTube URL from the inline input
+  const handleInlineAddYouTube = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsDragOver(false);
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      loadLocalAudioFiles(e.dataTransfer.files);
+    const url = youtubeInputUrl.trim();
+    if (!url) return;
+
+    setIsAddingUrl(true);
+    setInputError(null);
+
+    try {
+      // Validate YouTube URL
+      const res = await fetch(`/api/youtube/info?url=${encodeURIComponent(url)}`);
+      const info = await res.json();
+
+      if (!res.ok || !info.valid) {
+        setInputError(info.error || 'Could not resolve YouTube video info.');
+        setIsAddingUrl(false);
+        return;
+      }
+
+      const didAdd = await addTrackToQueue({
+        title: info.title || 'YouTube Track',
+        artist: info.artist || 'YouTube Broadcast',
+        youtubeId: info.videoId,
+        durationSeconds: info.durationSeconds || 0,
+        artworkId: currentRoom?.artworkId || 'noc-01',
+        sourceType: 'youtube',
+      });
+
+      if (didAdd) {
+        setYoutubeInputUrl('');
+      } else {
+        setInputError('Failed to add track to queue. Try again.');
+      }
+    } catch (err: any) {
+      setInputError(err.message || 'Error processing YouTube URL');
+    } finally {
+      setIsAddingUrl(false);
     }
   };
 
   return (
-    <div
-      onDragOver={(e) => {
-        e.preventDefault();
-        setIsDragOver(true);
-      }}
-      onDragLeave={() => setIsDragOver(false)}
-      onDrop={handleDrop}
-      className={`relative flex flex-col h-full bg-carbon/50 border-l border-graphite transition-colors ${
-        isDragOver ? 'bg-carbon/90 ring-1 ring-mineral/50' : ''
-      }`}
-    >
-      {/* Editorial Tracklist Header */}
-      <div className="flex items-center justify-between px-4 py-3.5 border-b border-graphite">
-        <div className="flex items-center gap-2">
-          <Disc3 className="w-4 h-4 text-mineral" />
-          <h2 className="font-display text-sm font-bold text-warm-bone tracking-tight">
-            Tracklist
-          </h2>
-          <span className="text-ash font-mono text-[11px]">
-            [<span className="font-mono">{queue.length}</span>]
-          </span>
+    <div className="relative flex flex-col h-full bg-white dark:bg-[#1A1829] border border-[#EDEAF5] dark:border-[#2D2945] rounded-xl shadow-sm dark:shadow-xl overflow-hidden transition-colors">
+      {/* Queue Header with Navigation Tabs (Stitch Direction B v3) */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[#EDEAF5] dark:border-[#2D2945] bg-white dark:bg-[#1A1829]">
+        <div className="flex items-center gap-4">
+          <button
+            type="button"
+            onClick={() => setActiveTab('queue')}
+            className={`text-sm font-semibold pb-1.5 transition-colors flex items-center gap-1.5 ${
+              activeTab === 'queue'
+                ? 'text-[#7C3AED] dark:text-white border-b-2 border-[#7C3AED] dark:border-[#8B5CF6]'
+                : 'text-[#5E5873] dark:text-[#A19EB5] hover:text-[#12101F] dark:hover:text-white'
+            }`}
+          >
+            <span>Up Next</span>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-[#F3F0FA] dark:bg-[#8B5CF6]/20 text-[#6D28D9] dark:text-[#DDD6FE] font-mono">
+              {queue.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('info')}
+            className={`text-sm font-medium pb-1.5 transition-colors ${
+              activeTab === 'info'
+                ? 'text-[#7C3AED] dark:text-white border-b-2 border-[#7C3AED] dark:border-[#8B5CF6]'
+                : 'text-[#5E5873] dark:text-[#A19EB5] hover:text-[#12101F] dark:hover:text-white'
+            }`}
+          >
+            Room Info
+          </button>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        {/* Load File & Add Music Actions */}
+        <div className="flex items-center gap-2">
           <label
-            className="flex items-center gap-1.5 rounded-full bg-deep-ink hover:bg-graphite border border-graphite text-warm-bone px-3 py-1 text-xs font-medium transition-colors cursor-pointer"
-            title="Load local audio file (.mp3, .wav, .flac)"
+            className="flex items-center gap-1.5 rounded-full bg-[#F3F0FA] dark:bg-[#242138] hover:bg-[#EDEAF5] dark:hover:bg-[#2D2945] border border-[#EDEAF5] dark:border-[#2D2945] text-xs font-medium text-[#7C3AED] dark:text-[#DDD6FE] px-2.5 py-1 transition-colors cursor-pointer"
+            title="Load local audio file"
           >
-            <Upload className="w-3.5 h-3.5 text-mineral" />
-            <span className="hidden sm:inline">Load file</span>
+            <Upload className="w-3.5 h-3.5 text-[#7C3AED] dark:text-[#8B5CF6]" />
+            <span className="hidden sm:inline">File</span>
             <input
               type="file"
-              accept="audio/*,.mp3,.wav,.flac,.ogg,.m4a,.aac"
+              accept="audio/*,.mp3,.wav,.flac"
               multiple
               className="sr-only"
               onChange={(e) => {
@@ -92,178 +153,262 @@ export const QueueDock: React.FC = () => {
           <button
             type="button"
             onClick={() => setIsSearchOpen(true)}
-            className="flex items-center gap-1.5 rounded-full bg-deep-ink hover:bg-graphite border border-graphite text-warm-bone px-3 py-1 text-xs font-medium transition-colors"
+            aria-label="Add YouTube URL"
+            title="Add YouTube URL"
+            className="flex items-center gap-1.5 rounded-full bg-mineral bg-[#7C3AED] dark:bg-[#8B5CF6] hover:bg-[#6D28D9] dark:hover:bg-[#7C3AED] text-white px-3 py-1 text-xs font-semibold shadow-md shadow-purple-500/20 transition-all active:scale-[0.98]"
           >
-            <Plus className="w-3.5 h-3.5 text-mineral" />
-            <span>Catalogue</span>
+            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+            <span>Add Music</span>
           </button>
         </div>
       </div>
 
-      {audioError && (
-        <div
-          role="alert"
-          aria-live="polite"
-          className="mx-3 mt-2 p-2 rounded-[2px] bg-oxide/10 border border-oxide/40 text-oxide text-xs flex items-center gap-2"
-        >
-          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-          <span>{audioError}</span>
+      {/* Inline YouTube URL Input (Visible in Queue Tab) */}
+      {activeTab === 'queue' && (
+        <div className="p-3 bg-[#F8F7FC] dark:bg-[#12101F]/80 border-b border-[#EDEAF5] dark:border-[#2D2945]">
+          <form onSubmit={handleInlineAddYouTube} className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#5E5873] dark:text-[#A19EB5]" />
+              <input
+                type="text"
+                value={youtubeInputUrl}
+                onChange={(e) => setYoutubeInputUrl(e.target.value)}
+                placeholder="Paste YouTube link (e.g. https://youtu.be/...)"
+                className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-white dark:bg-[#242138] border border-[#EDEAF5] dark:border-[#2D2945] focus:border-[#7C3AED] dark:focus:border-[#8B5CF6] focus:ring-1 focus:ring-[#7C3AED] dark:focus:ring-[#8B5CF6] text-xs text-[#12101F] dark:text-white placeholder-[#8E88A8] dark:placeholder-[#6B6785] transition-colors outline-none shadow-xs"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={isAddingUrl || !youtubeInputUrl.trim()}
+              className="px-3 py-1.5 rounded-lg bg-[#F43F5E] hover:bg-[#e11d48] dark:bg-[#FF5C8A] dark:hover:bg-[#ff477b] disabled:opacity-50 text-white text-xs font-semibold shrink-0 transition-transform active:scale-95 flex items-center gap-1 shadow-md shadow-pink-500/20"
+            >
+              {isAddingUrl ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Adding…</span>
+                </>
+              ) : (
+                <>
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Add to Queue</span>
+                </>
+              )}
+            </button>
+          </form>
+
+          {inputError && (
+            <p className="mt-1.5 text-[11px] text-[#FF5C8A] flex items-center gap-1">
+              <AlertCircle className="w-3 h-3 shrink-0" />
+              <span>{inputError}</span>
+            </p>
+          )}
         </div>
       )}
 
-      {/* Editorial Vinyl Tracklist Rows */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-1">
-        {queue.map((track, idx) => {
-          const isCurrent = track.id === currentTrack?.id;
-          const trackIndex = String(idx + 1).padStart(2, '0');
-
-          return (
+      {/* Tab 1: Queue Scroll Area */}
+      {activeTab === 'queue' ? (
+        <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
+          {/* CURRENTLY PLAYING ITEM (Elevated Highlight Card - Direction B v3) */}
+          {currentTrack && (
             <div
-              key={track.id}
-              onClick={() => selectTrack(track.id)}
-              className={`group flex items-center justify-between p-2 rounded-lg transition-colors border cursor-pointer ${
-                isCurrent
-                  ? 'bg-carbon/90 border-graphite shadow-sm'
-                  : 'hover:bg-carbon/60 border-transparent hover:border-graphite/40'
-              }`}
+              onClick={() => selectTrack(currentTrack.id)}
+              className="p-3 rounded-xl bg-[#F5F2FC] dark:bg-gradient-to-r dark:from-[#242138] dark:to-[#1F1C33] border border-[#DDD6FE] dark:border-[#8B5CF6]/50 shadow-sm dark:shadow-lg relative cursor-pointer group"
             >
-              <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                {/* Index / Active indicator */}
-                <span className="w-5 shrink-0 text-center text-[11px] font-mono">
-                  {isCurrent ? (
-                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-mineral animate-pulse" />
-                  ) : (
-                    <span className="text-ash/60">{trackIndex}</span>
-                  )}
-                </span>
-
-                <TrackThumb track={track} isCurrent={isCurrent} />
-
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span
-                      className={`text-xs truncate transition-colors ${
-                        isCurrent
-                          ? 'font-semibold text-warm-bone'
-                          : 'font-medium text-ash group-hover:text-warm-bone'
-                      }`}
-                    >
-                      {track.title}
-                    </span>
-                    {track.isLocalFile && (
-                      <span className="rounded-[2px] bg-mineral/20 text-mineral border border-mineral/40 px-1 py-0.2 text-[9px] font-sans font-medium shrink-0">
-                        Master
-                      </span>
-                    )}
-                    {track.sourceType === 'shared-audio' && (
-                      <span className="rounded-[2px] bg-mineral/10 text-mineral border border-mineral/30 px-1 py-0.2 text-[9px] font-sans font-medium shrink-0">Shared</span>
-                    )}
-                    {track.isTestFixture && (
-                      <span className="rounded-[2px] bg-oxide/20 text-oxide border border-oxide/40 px-1 py-0.2 text-[9px] font-sans font-medium shrink-0">
-                        Fixture
-                      </span>
-                    )}
-                    {(track.sourceType === 'youtube' || (!track.audioUrl && track.youtubeId)) && (
-                      <span className="rounded-[2px] bg-carbon text-warm-bone border border-graphite px-1 py-0.2 text-[9px] font-sans font-medium shrink-0">
-                        YouTube
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1.5 text-[11px] text-ash/80 mt-0.5">
-                    <span className="truncate">{track.artist}</span>
-                    <span className="text-graphite font-mono">/</span>
-                    <span className="truncate text-ash/60 text-[10px]">
-                      via {track.addedBy.name}
-                    </span>
-                  </div>
+              <div className="flex items-center justify-between mb-2">
+                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-[#4ADE80]/15 border border-emerald-200 dark:border-[#4ADE80]/30 text-[10px] font-bold text-emerald-700 dark:text-[#4ADE80] uppercase tracking-wide">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-[#4ADE80] animate-ping" />
+                  <span>Playing Now</span>
+                </div>
+                <div className="flex items-end gap-[2px] h-3.5">
+                  <span className="w-[2px] bg-[#7C3AED] dark:bg-[#8B5CF6] rounded-full eq-1" />
+                  <span className="w-[2px] bg-[#7C3AED] dark:bg-[#8B5CF6] rounded-full eq-2" />
+                  <span className="w-[2px] bg-[#7C3AED] dark:bg-[#8B5CF6] rounded-full eq-3" />
+                  <span className="w-[2px] bg-[#7C3AED] dark:bg-[#8B5CF6] rounded-full eq-4" />
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
-                <span className="text-[11px] font-mono text-ash">
-                  {track.durationSeconds > 0 ? formatTime(track.durationSeconds) : '—:—'}
-                </span>
-
-                {track.isLocalFile && (
-                  <button
-                    type="button"
-                    disabled={sharingTrackId === track.id}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      void shareLocalAudioFile(track.id);
-                    }}
-                    className="inline-flex items-center gap-1 rounded-[2px] border border-mineral/50 px-1.5 py-1 text-[10px] text-mineral hover:bg-mineral/10 disabled:opacity-60"
-                    aria-label={sharingTrackId === track.id ? 'Uploading audio to room' : 'Share audio with room'}
-                    title="Uploads a copy for room guests to stream. Only share audio you have permission to share."
-                  >
-                    <Upload className={`w-3 h-3 ${sharingTrackId === track.id ? 'animate-pulse text-warm-bone' : ''}`} />
-                    <span>{sharingTrackId === track.id ? 'Uploading…' : 'Share'}</span>
-                  </button>
-                )}
-
-                {!isCurrent && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      voteSkip(track.id);
-                    }}
-                    className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs transition-colors ${
-                      track.userVotedSkip
-                        ? 'bg-oxide/20 text-oxide border border-oxide/40'
-                        : 'bg-deep-ink text-ash hover:text-warm-bone border border-graphite'
-                    }`}
-                    title="Vote to skip track"
-                  >
-                    <ArrowUp className="w-3 h-3" />
-                    <span className="font-mono text-[11px]">{track.skipVotes}</span>
-                  </button>
-                )}
-
-                {!isCurrent && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeTrack(track.id);
-                    }}
-                    className="opacity-0 group-hover:opacity-100 p-1 text-ash hover:text-oxide transition-opacity"
-                    aria-label="Remove track from queue"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                )}
+              <div className="flex items-center gap-3">
+                <TrackThumb track={currentTrack} isCurrent={true} />
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-sm font-semibold text-[#12101F] dark:text-white truncate group-hover:text-[#7C3AED] dark:group-hover:text-[#DDD6FE]">
+                    {currentTrack.title}
+                  </h4>
+                  <p className="text-xs text-[#5E5873] dark:text-[#A19EB5] truncate">
+                    {currentTrack.artist}
+                  </p>
+                </div>
+                <div className="text-right shrink-0">
+                  <span className="text-xs font-mono font-medium text-[#12101F] dark:text-white">
+                    {currentTrack.durationSeconds > 0 ? formatTime(currentTrack.durationSeconds) : '—:—'}
+                  </span>
+                  <p className="text-[10px] text-[#8E88A8] dark:text-[#6B6785]">via {currentTrack.addedBy.name}</p>
+                </div>
               </div>
             </div>
-          );
-        })}
+          )}
 
-        {queue.length === 0 && (
-          <div className="flex flex-col items-center justify-center p-8 text-center text-ash">
-            <Disc3 className="w-8 h-8 mb-2 opacity-30" />
-            <p className="text-xs font-medium text-warm-bone">The queue is empty</p>
-            <p className="text-xs text-ash mt-1 max-w-[24ch]">
-              Add a YouTube link for the room, or load a local file to play on this device.
-            </p>
-            <button
-              type="button"
-              onClick={() => setIsSearchOpen(true)}
-              className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-mineral px-3 py-1.5 text-xs font-semibold text-deep-ink hover:bg-mineral/90"
-            >
-              <Plus className="w-3.5 h-3.5" /> Add a YouTube link
-            </button>
+          {/* UPCOMING TRACKS IN SHARED QUEUE */}
+          {queue.length === 0 ? (
+            <div className="py-12 px-4 text-center">
+              <Disc3 className="w-10 h-10 text-[#7C3AED]/50 dark:text-[#8B5CF6]/50 mx-auto animate-spin-slow mb-3" />
+              <p className="text-sm font-semibold text-[#12101F] dark:text-white">The queue is empty</p>
+              <p className="text-xs text-[#5E5873] dark:text-[#A19EB5] mt-1 max-w-xs mx-auto">
+                Paste any YouTube link above or click Add Music to start the session.
+              </p>
+            </div>
+          ) : (
+            queue.map((track, idx) => {
+              const isCurrent = track.id === currentTrack?.id;
+
+              return (
+                <div
+                  key={track.id}
+                  onClick={() => selectTrack(track.id)}
+                  className={`group flex items-center justify-between p-2.5 rounded-xl transition-all border cursor-pointer ${
+                    isCurrent
+                      ? 'bg-[#F3F0FA] dark:bg-[#242138]/90 border-[#DDD6FE] dark:border-[#8B5CF6]/40 shadow-xs'
+                      : 'hover:bg-[#F8F7FC] dark:hover:bg-[#242138]/60 border-transparent hover:border-[#EDEAF5] dark:hover:border-[#2D2945]'
+                  }`}
+                >
+                  <div className="flex items-center gap-3 min-w-0 pr-2">
+                    <span className="w-4 text-xs font-mono font-semibold text-[#6B6785] text-center group-hover:text-white shrink-0">
+                      {idx + 1}
+                    </span>
+
+                    <TrackThumb track={track} isCurrent={isCurrent} />
+
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className={`text-xs truncate transition-colors ${
+                            isCurrent ? 'font-semibold text-[#12101F] dark:text-white' : 'font-medium text-[#12101F] dark:text-[#DDD6FE] group-hover:text-[#7C3AED] dark:group-hover:text-white'
+                          }`}
+                        >
+                          {track.title}
+                        </span>
+                        {track.sourceType === 'youtube' && (
+                          <span className="rounded-[3px] bg-[#F3F0FA] dark:bg-[#242138] text-[#7C3AED] dark:text-[#DDD6FE] border border-[#EDEAF5] dark:border-[#2D2945] px-1 py-0.2 text-[9px] font-sans font-medium shrink-0">
+                            YouTube
+                          </span>
+                        )}
+                        {track.sourceType === 'shared-audio' && (
+                          <span className="rounded-[3px] bg-[#7C3AED]/10 dark:bg-[#8B5CF6]/20 text-[#7C3AED] dark:text-[#DDD6FE] border border-[#DDD6FE] dark:border-[#8B5CF6]/30 px-1 py-0.2 text-[9px] font-sans font-medium shrink-0">
+                            Shared
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[11px] text-[#5E5873] dark:text-[#A19EB5] mt-0.5">
+                        <span className="truncate">{track.artist}</span>
+                        <span className="text-[#8E88A8] dark:text-[#6B6785]">•</span>
+                        <span className="truncate text-[#8E88A8] dark:text-[#6B6785] text-[10px]">via {track.addedBy.name}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-[11px] font-mono text-[#5E5873] dark:text-[#A19EB5]">
+                      {track.durationSeconds > 0 ? formatTime(track.durationSeconds) : '—:—'}
+                    </span>
+
+                    {/* Local file sharing */}
+                    {track.isLocalFile && (
+                      <button
+                        type="button"
+                        disabled={sharingTrackId === track.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void shareLocalAudioFile(track.id);
+                        }}
+                        className="inline-flex items-center gap-1 rounded-full border border-[#8B5CF6]/50 px-2 py-0.5 text-[10px] text-[#DDD6FE] hover:bg-[#8B5CF6]/10 disabled:opacity-60"
+                        title="Share audio copy with room"
+                      >
+                        <Upload className="w-3 h-3" />
+                        <span>{sharingTrackId === track.id ? 'Sharing…' : 'Share'}</span>
+                      </button>
+                    )}
+
+                    {/* Skip vote */}
+                    {!isCurrent && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          voteSkip(track.id);
+                        }}
+                        className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs transition-colors ${
+                          track.userVotedSkip
+                            ? 'bg-[#FF5C8A]/20 text-[#FF5C8A] border border-[#FF5C8A]/40'
+                            : 'bg-[#242138] text-[#A19EB5] hover:text-white border border-[#2D2945]'
+                        }`}
+                        title="Vote to skip track"
+                      >
+                        <ArrowUp className="w-3 h-3" />
+                        <span className="font-mono text-[11px]">{track.skipVotes}</span>
+                      </button>
+                    )}
+
+                    {/* Remove track */}
+                    {!isCurrent && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeTrack(track.id);
+                        }}
+                        className="opacity-0 group-hover:opacity-100 p-1 text-[#A19EB5] hover:text-[#FF5C8A] transition-opacity"
+                        aria-label="Remove track from queue"
+                        title="Remove track"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+
+                    {/* Drag handle */}
+                    <span className="text-[#6B6785] group-hover:text-[#A19EB5] p-0.5">
+                      <GripVertical className="w-3.5 h-3.5" />
+                    </span>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      ) : (
+        /* Tab 2: Room Info Tab */
+        <div className="flex-1 overflow-y-auto p-5 space-y-4 text-xs text-[#5E5873] dark:text-[#A19EB5]">
+          <div>
+            <h4 className="text-[#12101F] dark:text-white font-semibold text-sm mb-1">{currentRoom.title}</h4>
+            <p className="leading-relaxed">{currentRoom.description}</p>
           </div>
-        )}
-      </div>
-
-      {/* Drag & drop overlay indicator */}
-      {isDragOver && (
-        <div className="absolute inset-0 bg-deep-ink/90 border-2 border-dashed border-mineral flex flex-col items-center justify-center p-6 text-center z-20 pointer-events-none">
-          <Upload className="w-8 h-8 text-mineral mb-2" />
-          <p className="text-xs font-semibold text-warm-bone">Drop audio master file here</p>
-          <p className="text-[11px] text-ash mt-1">.mp3, .wav, .flac, .ogg supported</p>
+          <div className="pt-3 border-t border-[#EDEAF5] dark:border-[#2D2945] space-y-2">
+            <div className="flex items-center justify-between">
+              <span>Mode</span>
+              <span className="text-[#12101F] dark:text-white font-medium capitalize">{currentRoom.mode || 'Collaborative'}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span>Host</span>
+              <span className="text-[#12101F] dark:text-white font-medium">{currentRoom.host?.name || 'NOCTURNE'}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span>Vibe</span>
+              <span className="text-[#12101F] dark:text-white font-medium">{currentRoom.vibeTag}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span>Artwork ID</span>
+              <span className="font-mono text-[#6D28D9] dark:text-[#DDD6FE]">[{currentRoom.artworkId?.toUpperCase() || 'NOC-01'}]</span>
+            </div>
+          </div>
         </div>
       )}
+
+      {/* Bottom Collaborative Status Banner (Stitch Direction B v3) */}
+      <div className="px-4 py-3 border-t border-[#EDEAF5] dark:border-[#2D2945] bg-white dark:bg-[#1A1829] flex items-center justify-between text-xs text-[#5E5873] dark:text-[#A19EB5]">
+        <div className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-[#4ADE80]" />
+          <span>Collaborative Queue • Anyone can add tracks</span>
+        </div>
+        <span className="text-[#DDD6FE] text-[11px] font-medium">Auto-sync</span>
+      </div>
     </div>
   );
 };

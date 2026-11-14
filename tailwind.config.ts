@@ -9,7 +9,36 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // NOCTURNE Creative Direction v1.0 — Mineral / Oxide Palette
+        // Direction B v3 — Colourful Contemporary Brand Palette
+        violet: {
+          DEFAULT: '#8B5CF6',
+          deep: '#7C3AED',
+          light: '#DDD6FE',
+          subtle: 'rgba(139, 92, 246, 0.15)',
+        },
+        pink: {
+          DEFAULT: '#EC4899',
+          subtle: 'rgba(236, 72, 153, 0.15)',
+        },
+        coral: {
+          DEFAULT: '#FF5C8A',
+          hover: '#FF477B',
+          subtle: 'rgba(255, 92, 138, 0.15)',
+        },
+        cyan: {
+          DEFAULT: '#06B6D4',
+          subtle: 'rgba(6, 182, 212, 0.15)',
+        },
+        emerald: {
+          DEFAULT: '#4ADE80',
+          subtle: 'rgba(74, 222, 128, 0.15)',
+        },
+        amber: {
+          DEFAULT: '#FBBF24',
+          subtle: 'rgba(251, 191, 36, 0.15)',
+        },
+
+        // Theme Surfaces & Foundations
         'deep-ink': 'var(--color-deep-ink)',
         carbon: 'var(--color-carbon)',
         graphite: 'var(--color-graphite)',
@@ -36,24 +65,23 @@ const config: Config = {
           DEFAULT: 'var(--color-lavender)',
           subtle: 'var(--color-lavender-subtle)',
         },
-        coral: {
-          DEFAULT: 'var(--color-coral)',
-          subtle: 'var(--color-coral-subtle)',
-        },
         green: {
           DEFAULT: 'var(--color-green)',
         },
       },
       fontFamily: {
-        display: ['Syne', 'sans-serif'],
+        headline: ['Plus Jakarta Sans', 'sans-serif'],
+        display: ['Plus Jakarta Sans', 'Syne', 'sans-serif'],
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        body: ['Inter', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'monospace'],
-        // Backward-compatible alias for existing components
-        serif: ['Syne', 'sans-serif'],
+        serif: ['Plus Jakarta Sans', 'sans-serif'],
       },
       boxShadow: {
-        'glow-lavender': '0 0 35px -8px rgba(160, 183, 168, 0.20)',
-        'glow-album': '0 20px 50px -15px rgba(0, 0, 0, 0.8), 0 0 30px -8px rgba(160, 183, 168, 0.12)',
+        'glow-violet': '0 0 35px -8px rgba(139, 92, 246, 0.35)',
+        'glow-coral': '0 0 35px -8px rgba(255, 92, 138, 0.35)',
+        'glow-lavender': '0 0 35px -8px rgba(139, 92, 246, 0.20)',
+        'glow-album': '0 20px 50px -15px rgba(0, 0, 0, 0.8), 0 0 30px -8px rgba(139, 92, 246, 0.20)',
       },
     },
   },

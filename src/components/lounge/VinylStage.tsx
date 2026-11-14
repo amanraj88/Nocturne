@@ -1,9 +1,25 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useLounge } from '@/context/LoungeContext';
-import { AudioVisualizer } from './AudioVisualizer';
 import { ArtworkRenderer } from '@/components/artwork';
 import { formatTime } from '@/lib/utils';
-import { Heart, Share2, Check, Tv, Disc, AlertCircle, SkipForward } from 'lucide-react';
+import {
+  Heart,
+  Share2,
+  Check,
+  Tv,
+  Disc,
+  AlertCircle,
+  SkipForward,
+  SkipBack,
+  Play,
+  Pause,
+  Shuffle,
+  Repeat,
+  Volume2,
+  VolumeX,
+  Speaker,
+  Radio,
+} from 'lucide-react';
 
 export const VinylStage: React.FC = () => {
   const {
@@ -14,13 +30,20 @@ export const VinylStage: React.FC = () => {
     durationSeconds,
     youtubePlaybackBlocked,
     audioPlaybackBlocked,
+    togglePlay,
     seekTo,
     skipTrack,
+    previousTrack,
+    volume,
+    setVolume,
+    isMuted,
+    toggleMute,
     hasPhysicalAudio,
     isYouTubeActive,
     audioError,
     sendChatMessage,
     registerYouTubePlayer,
+    registerYouTubeDuration,
     syncYouTubePlaybackState,
     setYouTubePlaybackBlocked,
   } = useLounge();
@@ -30,21 +53,50 @@ export const VinylStage: React.FC = () => {
   const [viewMode, setViewMode] = useState<'monitor' | 'sleeve'>('monitor');
   const [ytErrorNotice, setYtErrorNotice] = useState<string | null>(null);
 
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const ytPlayerInstanceRef = useRef<any>(null);
+  const isInitializingPlayerRef = useRef(false);
+  const loadedYoutubeIdRef = useRef<string | null>(null);
+  const isSeekingDueToSyncRef = useRef(false);
   const isScriptLoadedRef = useRef(false);
   const skipTrackRef = useRef(skipTrack);
   skipTrackRef.current = skipTrack;
+  const isPlayingRef = useRef(isPlaying);
+  isPlayingRef.current = isPlaying;
   const syncYouTubePlaybackStateRef = useRef(syncYouTubePlaybackState);
   syncYouTubePlaybackStateRef.current = syncYouTubePlaybackState;
+  const registerYouTubePlayerRef = useRef(registerYouTubePlayer);
+  registerYouTubePlayerRef.current = registerYouTubePlayer;
+  const registerYouTubeDurationRef = useRef(registerYouTubeDuration);
+  registerYouTubeDurationRef.current = registerYouTubeDuration;
+  const setYouTubePlaybackBlockedRef = useRef(setYouTubePlaybackBlocked);
+  setYouTubePlaybackBlockedRef.current = setYouTubePlaybackBlocked;
+  const volumeRef = useRef(volume);
+  volumeRef.current = volume;
+  const isMutedRef = useRef(isMuted);
+  isMutedRef.current = isMuted;
+  const currentYoutubeIdRef = useRef<string | undefined>(currentTrack?.youtubeId);
+  currentYoutubeIdRef.current = currentTrack?.youtubeId;
   const autoplayBlockedRef = useRef(false);
   const progressSecondsRef = useRef(progressSeconds);
   progressSecondsRef.current = progressSeconds;
 
-  const progressPercent = durationSeconds > 0 ? (progressSeconds / durationSeconds) * 100 : 0;
+  const progressPercent =
+    durationSeconds > 0 ? Math.min(100, Math.max(0, (progressSeconds / durationSeconds) * 100)) : 0;
 
-  const handleScrubberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = parseFloat(e.target.value);
-    seekTo((val / 100) * durationSeconds);
+  // Waveform click / drag seek handler
+  const handleWaveformSeek = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (durationSeconds <= 0) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clickX = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
+    const targetRatio = clickX / rect.width;
+    const targetSeconds = Math.round(targetRatio * durationSeconds);
+    isSeekingDueToSyncRef.current = true;
+    seekTo(targetSeconds, true);
+    setTimeout(() => {
+      isSeekingDueToSyncRef.current = false;
+    }, 1500);
   };
 
   const copyRoomLink = async () => {
@@ -100,7 +152,7 @@ export const VinylStage: React.FC = () => {
     }
   }, []);
 
-  // Initialize official YouTube IFrame Player
+  // Initialize official YouTube IFrame Player with persistent DOM presence and backup polling
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -109,352 +161,474 @@ export const VinylStage: React.FC = () => {
     const setupPlayer = () => {
       if (destroyed) return;
       if (!window.YT || !window.YT.Player) {
-        setTimeout(setupPlayer, 150);
         return;
       }
 
-      const playerElement = document.getElementById('nocturne-yt-player');
-      if (!playerElement) return;
+      const playerContainer = containerRef.current;
+      if (!playerContainer) return;
 
-      // Avoid re-creating if player already initialized on this DOM element
-      if (ytPlayerInstanceRef.current) return;
+      if (ytPlayerInstanceRef.current || isInitializingPlayerRef.current) return;
+      isInitializingPlayerRef.current = true;
+
+      // Ensure target element exists inside container
+      let playerElement = document.getElementById('nocturne-yt-player');
+      if (!playerElement) {
+        playerElement = document.createElement('div');
+        playerElement.id = 'nocturne-yt-player';
+        playerElement.className = 'w-full h-full';
+        playerContainer.appendChild(playerElement);
+      }
 
       try {
+        const activeYtId = currentYoutubeIdRef.current;
         const player = new window.YT.Player('nocturne-yt-player', {
-          ...(currentTrack?.youtubeId ? { videoId: currentTrack.youtubeId } : {}),
+          height: '100%',
+          width: '100%',
+          videoId: activeYtId || undefined,
           playerVars: {
-            autoplay: 0,
-            controls: 1, // Official YouTube player controls visible and unobstructed
+            autoplay: 1,
+            controls: 0,
+            disablekb: 1,
+            fs: 0,
             modestbranding: 1,
             rel: 0,
-            enablejsapi: 1,
             origin: window.location.origin,
+            playsinline: 1,
+            enablejsapi: 1,
           },
           events: {
             onReady: (event: any) => {
+              if (destroyed) return;
+              isInitializingPlayerRef.current = false;
               ytPlayerInstanceRef.current = event.target;
-              registerYouTubePlayer(event.target);
+              (window as any).__NOCTURNE_YT_PLAYER__ = event.target;
+              registerYouTubePlayerRef.current(event.target);
+
+              try {
+                event.target.setVolume(volumeRef.current);
+                if (isMutedRef.current) event.target.mute();
+                else event.target.unMute();
+              } catch (e) {}
+
+              if (activeYtId) {
+                loadedYoutubeIdRef.current = activeYtId;
+                const startSec = Math.floor(progressSecondsRef.current || 0);
+                if (isPlayingRef.current) {
+                  event.target.loadVideoById({
+                    videoId: activeYtId,
+                    startSeconds: startSec,
+                  });
+                } else {
+                  event.target.cueVideoById({
+                    videoId: activeYtId,
+                    startSeconds: startSec,
+                  });
+                }
+              }
             },
             onStateChange: (event: any) => {
-              const player = event.target;
-              const eventVideoId = player?.getVideoData?.()?.video_id;
-              if (currentYoutubeIdRef.current && eventVideoId && eventVideoId !== currentYoutubeIdRef.current) return;
+              if (destroyed) return;
+              const state = event.data;
 
-              // The IFrame briefly reports PAUSED while replacing a video. Confirm after its state settles.
-              if (event.data === 1) {
-                autoplayBlockedRef.current = false;
-                setYouTubePlaybackBlocked(false);
-                setYtErrorNotice(null);
-                const targetSeconds = progressSecondsRef.current;
-                const currentSeconds = player?.getCurrentTime?.();
-                if (targetSeconds > 2 && typeof currentSeconds === 'number' && Math.abs(currentSeconds - targetSeconds) > 2) {
-                  try { player.seekTo(targetSeconds, true); } catch (err) {}
-                }
+              // Read true video duration from live player
+              const playerDur = event.target.getDuration?.();
+              if (playerDur && playerDur > 0) {
+                registerYouTubeDurationRef.current(playerDur);
+              }
+
+              if (state === window.YT.PlayerState.PLAYING) {
+                setYouTubePlaybackBlockedRef.current(false);
                 syncYouTubePlaybackStateRef.current(true);
-              }
-              if (event.data === 5 && progressSecondsRef.current > 2) {
-                try { player.seekTo(progressSecondsRef.current, true); } catch (err) {}
-              }
-              if (event.data === 2) {
-                window.setTimeout(() => {
-                  const settledState = player?.getPlayerState?.();
-                  const settledVideoId = player?.getVideoData?.()?.video_id;
-                  if (destroyed || settledState !== 2) return;
-                  if (currentYoutubeIdRef.current && settledVideoId && settledVideoId !== currentYoutubeIdRef.current) return;
-                  if (autoplayBlockedRef.current) return;
-                  if (document.visibilityState !== 'visible') return;
-                  syncYouTubePlaybackStateRef.current(false);
-                }, 250);
-              }
-              if (event.data === 0) {
+                const player = event.target || ytPlayerInstanceRef.current;
+                const targetSeconds = progressSecondsRef.current;
+                const currentTime = player && typeof player.getCurrentTime === 'function' ? player.getCurrentTime() : 0;
+                if (Math.abs(currentTime - targetSeconds) > 2.5) {
+                  if (player && typeof player.seekTo === 'function') {
+                    try {
+                      player.seekTo(targetSeconds, true);
+                    } catch (err) {}
+                  }
+                }
+              } else if (state === window.YT.PlayerState.PAUSED) {
+                const currentTime = event.target.getCurrentTime?.() || 0;
+                if (isPlayingRef.current && currentTime <= 0.5) {
+                  setYouTubePlaybackBlockedRef.current(true);
+                }
                 syncYouTubePlaybackStateRef.current(false);
+              } else if (state === window.YT.PlayerState.ENDED) {
                 skipTrackRef.current(true);
               }
             },
             onError: (event: any) => {
-              const errorVideoId = event.target?.getVideoData?.()?.video_id;
-              if (currentYoutubeIdRef.current && errorVideoId && errorVideoId !== currentYoutubeIdRef.current) return;
-              syncYouTubePlaybackStateRef.current(false);
               const code = event.data;
-              let msg = 'YouTube playback error.';
-              if (code === 2) msg = 'Invalid YouTube video ID parameter.';
-              else if (code === 5) msg = 'HTML5 player rendering error.';
-              else if (code === 100) msg = 'This video is unavailable, private, or removed.';
-              else if (code === 101 || code === 150) {
-                msg = 'This video could not play here. Check that the link is valid and embeddable.';
+              console.warn('[NOCTURNE YouTube] Playback error code:', code);
+              if (code === 101 || code === 150) {
+                setYtErrorNotice('Playback is restricted by copyright owner on third-party sites.');
+              } else if (code === 2 || code === 100) {
+                setYtErrorNotice('This video is unavailable or has been removed.');
+              } else {
+                setYtErrorNotice('Playback failed. Skipping to next track in queue...');
               }
-              setYtErrorNotice(msg);
-            },
-            onAutoplayBlocked: () => {
-              autoplayBlockedRef.current = true;
-              setYouTubePlaybackBlocked(true);
-              setYtErrorNotice('Playback needs a tap in this tab. Press the room play button to join.');
             },
           },
         });
-      } catch (err) {
-        console.warn('YouTube Player initialization notice:', err);
+      } catch (e) {
+        isInitializingPlayerRef.current = false;
+        console.error('[NOCTURNE YouTube] Setup error:', e);
       }
     };
 
-    if (window.YT && window.YT.Player) {
-      setupPlayer();
-    } else {
-      window.onYouTubeIframeAPIReady = setupPlayer;
-    }
+    setupPlayer();
+    const pollTimer = window.setInterval(() => {
+      if (!ytPlayerInstanceRef.current && !isInitializingPlayerRef.current) {
+        setupPlayer();
+      }
+    }, 500);
 
     return () => {
       destroyed = true;
-    };
-  }, [registerYouTubePlayer]);
-
-  useEffect(() => {
-    const resumeVisibleRoomPlayback = () => {
-      if (document.visibilityState !== 'visible' || !isYouTubeActive || !isPlaying) return;
-      const player = ytPlayerInstanceRef.current;
-      if (player && player.getPlayerState?.() !== 1) {
-        try { player.playVideo(); } catch (err) {}
+      isInitializingPlayerRef.current = false;
+      window.clearInterval(pollTimer);
+      if (ytPlayerInstanceRef.current) {
+        try {
+          ytPlayerInstanceRef.current.destroy();
+        } catch (e) {}
+        ytPlayerInstanceRef.current = null;
       }
+      registerYouTubePlayer(null);
+    };
+  }, []);
+
+  // Synchronize track changes to YouTube Player without reloading on play/pause
+  useEffect(() => {
+    const player = ytPlayerInstanceRef.current;
+    if (!player || !currentTrack?.youtubeId) return;
+
+    try {
+      const targetYtId = currentTrack.youtubeId;
+      // Only reload or cue if the track itself has changed
+      if (loadedYoutubeIdRef.current !== targetYtId) {
+        loadedYoutubeIdRef.current = targetYtId;
+        setYtErrorNotice(null);
+        const startSec = Math.floor(progressSecondsRef.current || 0);
+        if (isPlaying) {
+          if (typeof player.loadVideoById === 'function') {
+            player.loadVideoById({
+              videoId: targetYtId,
+              startSeconds: startSec,
+            });
+          }
+        } else {
+          if (typeof player.cueVideoById === 'function') {
+            player.cueVideoById({
+              videoId: targetYtId,
+              startSeconds: startSec,
+            });
+          }
+        }
+      } else {
+        // Track is already loaded: only toggle play/pause; do NOT reload video!
+        const playerState = player.getPlayerState?.();
+        if (isPlaying) {
+          if (playerState !== window.YT?.PlayerState?.PLAYING && playerState !== window.YT?.PlayerState?.BUFFERING) {
+            // Verify playback position has not drifted before resuming
+            const curTime = player.getCurrentTime?.() || 0;
+            const targetSec = progressSecondsRef.current || 0;
+            if (Math.abs(curTime - targetSec) > 2.0 && typeof player.seekTo === 'function') {
+              try { player.seekTo(targetSec, true); } catch (e) {}
+            }
+            player.playVideo?.();
+          }
+        } else if (playerState === window.YT?.PlayerState?.PLAYING) {
+          player.pauseVideo?.();
+        }
+      }
+    } catch (e) {
+      console.warn('[NOCTURNE YouTube] Track switch error:', e);
+    }
+  }, [currentTrack?.youtubeId, isPlaying]);
+
+  // Periodic playhead tracking & gentle drift correction (runs every 1.5s while playing)
+  useEffect(() => {
+    const player = ytPlayerInstanceRef.current;
+    if (!player || !isPlaying) return;
+
+    const interval = setInterval(() => {
+      try {
+        const curTime = player.getCurrentTime?.();
+        if (typeof curTime !== 'number' || !isFinite(curTime)) return;
+
+        // If local player drifts from authoritative progressSeconds by > 2.5s, gently seek
+        const targetSeconds = progressSecondsRef.current;
+        const drift = Math.abs(curTime - targetSeconds);
+        if (drift > 2.5 && !isSeekingDueToSyncRef.current) {
+          isSeekingDueToSyncRef.current = true;
+          if (typeof player.seekTo === 'function') {
+            player.seekTo(targetSeconds, true);
+          }
+          setTimeout(() => {
+            isSeekingDueToSyncRef.current = false;
+          }, 800);
+        }
+      } catch (err) {}
+    }, 1500);
+
+    return () => clearInterval(interval);
+  }, [isPlaying]);
+
+  // Synchronize volume and mute states
+  useEffect(() => {
+    const player = ytPlayerInstanceRef.current;
+    if (!player) return;
+    try {
+      if (isMuted || volume === 0) {
+        player.mute?.();
+      } else {
+        player.unMute?.();
+        player.setVolume?.(volume);
+      }
+    } catch (e) {}
+  }, [volume, isMuted]);
+
+  // Flowing Waveform Canvas Animator (Stitch Direction B v3)
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let animId: number;
+    let step = 0;
+
+    const resize = () => {
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * (window.devicePixelRatio || 1);
+      canvas.height = rect.height * (window.devicePixelRatio || 1);
+      ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
     };
 
-    document.addEventListener('visibilitychange', resumeVisibleRoomPlayback);
-    return () => document.removeEventListener('visibilitychange', resumeVisibleRoomPlayback);
-  }, [isYouTubeActive, isPlaying]);
+    resize();
+    window.addEventListener('resize', resize);
 
-  const currentYoutubeIdRef = useRef(currentTrack?.youtubeId || '');
-  currentYoutubeIdRef.current = currentTrack?.youtubeId || '';
+    const layers = [
+      { color: '#8B5CF6', alpha: 0.35, freq: 0.015, speed: 0.03, amp: 22, offset: 0 },
+      { color: '#06B6D4', alpha: 0.25, freq: 0.022, speed: 0.02, amp: 14, offset: 1.5 },
+      { color: '#EC4899', alpha: 0.40, freq: 0.018, speed: 0.035, amp: 18, offset: 3.0 },
+      { color: '#FF5C8A', alpha: 0.50, freq: 0.012, speed: 0.025, amp: 26, offset: 4.2 },
+    ];
 
-  // Determine artwork identifier based on current track or room
+    const render = () => {
+      const rect = canvas.getBoundingClientRect();
+      const width = rect.width;
+      const height = rect.height;
+
+      ctx.clearRect(0, 0, width, height);
+
+      const dynamicAmpMult = isPlaying ? 1.0 : 0.25;
+      const dynamicSpeedMult = isPlaying ? 1.0 : 0.15;
+
+      layers.forEach((layer) => {
+        ctx.beginPath();
+        ctx.moveTo(0, height);
+
+        for (let x = 0; x <= width; x += 4) {
+          const y1 =
+            Math.sin(x * layer.freq + step * layer.speed * dynamicSpeedMult + layer.offset) *
+            (layer.amp * dynamicAmpMult);
+          const y2 =
+            Math.cos(x * 0.008 - step * 0.015 * dynamicSpeedMult) *
+            (layer.amp * 0.5 * dynamicAmpMult);
+          const y = height / 2 + y1 + y2;
+
+          if (x === 0) {
+            ctx.lineTo(x, y);
+          } else {
+            ctx.lineTo(x, y);
+          }
+        }
+
+        ctx.lineTo(width, height);
+        ctx.closePath();
+
+        const gradient = ctx.createLinearGradient(0, 0, width, height);
+        gradient.addColorStop(0, layer.color);
+        gradient.addColorStop(0.5, '#7C3AED');
+        gradient.addColorStop(1, '#FF5C8A');
+
+        ctx.fillStyle = gradient;
+        ctx.globalAlpha = layer.alpha;
+        ctx.fill();
+      });
+
+      ctx.globalAlpha = 1.0;
+      step++;
+      animId = requestAnimationFrame(render);
+    };
+
+    render();
+
+    return () => {
+      window.removeEventListener('resize', resize);
+      cancelAnimationFrame(animId);
+    };
+  }, [isPlaying]);
+
   const activeArtworkId = currentTrack?.artworkId || currentRoom.artworkId || 'noc-01';
-  const displayTitle = currentTrack?.title || 'No track selected';
-  const displayArtist = currentTrack?.artist || 'Add a YouTube link or local audio file to begin listening.';
-  const catalogMark = activeArtworkId.toUpperCase();
-
-  // Spindle label accent styling matched to room identity
-  const spindleAccentClass =
-    activeArtworkId === 'noc-03'
-      ? 'border-oxide/70 text-oxide'
-      : activeArtworkId === 'noc-02'
-      ? 'border-warm-bone/70 text-warm-bone'
-      : 'border-mineral/70 text-mineral';
-
-  const showVideoAsMain = isYouTubeActive;
+  const displayTitle = currentTrack?.title || currentRoom.title || 'Shibuya Midnight Reverie';
+  const displayArtist = currentTrack?.artist || 'NOCTURNE Curated Selection';
+  const hostName = currentRoom?.host?.name || 'Alex';
+  const isVideoVisible = Boolean(currentTrack?.youtubeId && viewMode === 'monitor');
 
   return (
-    <div className="relative flex flex-col items-center justify-start py-3 px-3 sm:py-6 sm:px-6 lg:py-8 lg:px-8 w-full max-w-full mx-auto overflow-x-hidden shrink-0">
-      <div className="relative z-10 w-full flex flex-col items-center">
-        {/* Release Metadata Header with Discreet Quick Actions */}
-        <div className="flex items-center justify-between w-full max-w-[316px] sm:max-w-[360px] md:max-w-[420px] lg:max-w-[480px] mb-3 text-ash px-0.5">
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            <span className="font-mono text-[11px] sm:text-xs text-ash">
-              [{isYouTubeActive ? 'YT' : catalogMark}]
-            </span>
-            <span className="text-graphite font-mono hidden sm:inline">/</span>
-            <span className="font-sans text-xs text-ash font-medium hidden sm:inline">
-              {isYouTubeActive ? 'Official YouTube embed' : currentTrack?.isTestFixture ? 'Generated test tone' : currentTrack?.isLocalFile ? 'Local audio file' : currentTrack?.sourceType === 'shared-audio' ? 'Shared audio file' : currentTrack ? 'Audio source' : 'No track queued'}
-            </span>
-            <span className="text-graphite font-mono">/</span>
-            <span className="font-sans text-[11px] sm:text-xs text-mineral flex items-center gap-1 font-medium">
-              <span
-                className={`w-1.5 h-1.5 rounded-full ${
-                  isPlaying ? 'bg-mineral animate-pulse' : 'bg-ash/50'
-                }`}
-              />
-              {(youtubePlaybackBlocked || audioPlaybackBlocked) && isPlaying ? 'Tap to join' : isPlaying ? 'Playing' : currentTrack ? 'Standby' : 'Awaiting source'}
-            </span>
+    <div className="w-full flex flex-col gap-4">
+      {/* Tap-to-Join Live Playback Overlay for Strict Mobile Autoplay Policies */}
+      {(youtubePlaybackBlocked || audioPlaybackBlocked) && (
+        <div className="w-full p-3 rounded-xl bg-[#F3F0FA] dark:bg-[#8B5CF6]/20 border border-[#DDD6FE] dark:border-[#8B5CF6]/50 text-[#12101F] dark:text-white text-xs flex items-center justify-between shadow-md">
+          <div className="flex items-center gap-2">
+            <Radio className="w-4 h-4 text-[#F43F5E] dark:text-[#FF5C8A] animate-pulse" />
+            <span>Tap to sync & join live audio/video</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              if (isYouTubeActive && ytPlayerInstanceRef.current?.playVideo) {
+                ytPlayerInstanceRef.current.playVideo();
+                setYouTubePlaybackBlocked(false);
+              }
+            }}
+            className="px-3 py-1 bg-[#FF5C8A] hover:bg-[#ff477b] text-white font-semibold rounded-full text-xs shadow-md"
+          >
+            Sync
+          </button>
+        </div>
+      )}
+
+      {/* Player Card Container (Stitch Direction B v3) */}
+      <div className="bg-white dark:bg-[#1A1829] border border-[#EDEAF5] dark:border-[#2D2945] rounded-2xl p-4 sm:p-6 shadow-sm dark:shadow-2xl relative overflow-hidden flex flex-col justify-between transition-colors">
+        {/* Subtle Ambient Radial Glow Backdrops */}
+        <div className="absolute -top-24 -left-24 w-72 h-72 bg-[#8B5CF6]/15 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -right-24 w-72 h-72 bg-[#FF5C8A]/10 rounded-full blur-3xl pointer-events-none" />
+
+        {/* Stage Container */}
+        <div className="relative w-full aspect-[16/10] sm:aspect-[16/9] rounded-xl overflow-hidden group shadow-2xl border border-[#EDEAF5] dark:border-[#2D2945]/80 bg-black">
+          {/* YouTube Video Monitor (Persistent DOM element with persistent positioning to prevent audio termination) */}
+          <div
+            ref={containerRef}
+            className={`transition-all duration-300 rounded-lg overflow-hidden border border-[#EDEAF5] dark:border-[#2D2945] shadow-2xl bg-black ${
+              isVideoVisible
+                ? 'w-full aspect-video z-20 shadow-glow-album'
+                : 'fixed -left-[9999px] top-0 w-1 h-1 opacity-0 pointer-events-none'
+            }`}
+          >
+            <div id="nocturne-yt-player" className="w-full h-full" />
           </div>
 
-          <div className="flex items-center gap-1.5">
-            {/* View Switcher for YouTube tracks: Video Monitor vs Sleeve */}
-            {isYouTubeActive && (
-              <div className="flex items-center bg-carbon border border-graphite rounded-[2px] p-0.5 mr-1">
-                <button
-                  type="button"
-                  onClick={() => setViewMode('monitor')}
-                  className={`flex items-center gap-1 px-2 py-0.5 text-[10px] font-sans font-medium rounded-[2px] transition-colors ${
-                    viewMode === 'monitor'
-                      ? 'bg-deep-ink text-mineral font-semibold'
-                      : 'text-ash hover:text-warm-bone'
-                  }`}
-                  title="Display YouTube video monitor on stage"
-                >
-                  <Tv className="w-3 h-3" />
-                  <span>Video</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode('sleeve')}
-                  className={`flex items-center gap-1 px-2 py-0.5 text-[10px] font-sans font-medium rounded-[2px] transition-colors ${
-                    viewMode === 'sleeve'
-                      ? 'bg-deep-ink text-mineral font-semibold'
-                      : 'text-ash hover:text-warm-bone'
-                  }`}
-                  title="Display vinyl sleeve artwork"
-                >
-                  <Disc className="w-3 h-3" />
-                  <span>Sleeve</span>
-                </button>
-              </div>
-            )}
+          {/* Fallback Artwork Sleeve View */}
+          <div
+            className={`w-full h-full transition-transform duration-700 group-hover:scale-105 ${
+              !isVideoVisible ? 'block' : 'hidden'
+            }`}
+          >
+            <ArtworkRenderer artworkId={activeArtworkId} className="w-full h-full object-cover" />
+          </div>
 
-            {copyStatus === 'copied' && (
-              <span
-                role="status"
-                aria-live="polite"
-                className="text-[10px] font-sans font-medium text-mineral px-2 py-0.5 rounded-[2px] bg-carbon border border-graphite shrink-0"
+          {/* Category Tag Pill */}
+          <div className="absolute top-3.5 left-3.5 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-xs font-semibold text-[#DDD6FE] flex items-center gap-1.5 shadow-lg z-20">
+            <span className="w-2 h-2 rounded-full bg-[#8B5CF6] animate-pulse" />
+            <span>{currentRoom.vibeTag || 'Atmospheric Chill'}</span>
+          </div>
+
+          {/* Synced with Host Indicator Badge */}
+          <div className="absolute top-3.5 right-3.5 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-[11px] font-medium text-[#38BDF8] flex items-center gap-1.5 z-20 shadow-lg">
+            <Radio className="w-3 h-3 text-[#38BDF8]" />
+            <span>Synced with {hostName}</span>
+          </div>
+
+          {/* Mode Switcher Pill (Video / Artwork) if YouTube is present */}
+          {currentTrack?.youtubeId && (
+            <div className="absolute bottom-3 right-3 z-20">
+              <button
+                type="button"
+                onClick={() => setViewMode(viewMode === 'monitor' ? 'sleeve' : 'monitor')}
+                className="px-2.5 py-1 rounded-full bg-black/60 hover:bg-black/80 border border-white/15 text-[11px] font-medium text-white flex items-center gap-1.5 backdrop-blur-md transition-colors"
+                title={viewMode === 'monitor' ? 'Show Sleeve Artwork' : 'Show YouTube Video'}
               >
-                Link copied
+                {viewMode === 'monitor' ? (
+                  <>
+                    <Disc className="w-3.5 h-3.5 text-[#8B5CF6]" />
+                    <span>Artwork View</span>
+                  </>
+                ) : (
+                  <>
+                    <Tv className="w-3.5 h-3.5 text-[#4ADE80]" />
+                    <span>Video View</span>
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+
+          {/* Album Mark Pill */}
+          <div className="absolute bottom-3 left-3 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-[11px] text-[#A19EB5] z-20">
+            <span>Room • [{activeArtworkId.toUpperCase()}]</span>
+          </div>
+        </div>
+
+        {/* Track Title & Primary Action Cluster */}
+        <div className="flex items-center justify-between mt-5">
+          <div className="min-w-0 pr-3">
+            <h2 className="text-xl sm:text-2xl font-headline font-bold text-[#12101F] dark:text-white tracking-tight truncate">
+              {displayTitle}
+            </h2>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-sm text-[#7C3AED] dark:text-[#DDD6FE] font-medium truncate">
+                {displayArtist}
               </span>
-            )}
-            {copyStatus === 'error' && (
-              <span
-                role="status"
-                aria-live="polite"
-                className="text-[10px] font-sans font-medium text-oxide px-2 py-0.5 rounded-[2px] bg-carbon border border-oxide/40 shrink-0"
-              >
-                Copy failed
+              <span className="text-xs text-[#8E88A8] dark:text-[#6B6785]">•</span>
+              <span className="text-xs text-[#5E5873] dark:text-[#A19EB5] bg-[#F3F0FA] dark:bg-[#242138] border border-[#EDEAF5] dark:border-[#2D2945] px-2.5 py-0.5 rounded-full truncate">
+                {isYouTubeActive ? 'YouTube Stream' : 'Curated Audio'}
               </span>
-            )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* Favorite / Like Toggle */}
             <button
               type="button"
               onClick={() => setIsLiked(!isLiked)}
-              className={`p-1.5 rounded-full transition-colors border ${
+              className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
                 isLiked
-                  ? 'bg-mineral text-deep-ink border-mineral'
-                  : 'bg-carbon text-ash border-graphite hover:text-warm-bone hover:border-mineral/50'
+                  ? 'text-[#F43F5E] bg-[#F43F5E]/10'
+                  : 'text-[#5E5873] dark:text-[#A19EB5] hover:text-[#12101F] dark:hover:text-white hover:bg-[#F3F0FA] dark:hover:bg-[#242138]'
               }`}
-              aria-label={isLiked ? 'Unlike track' : 'Favorite track'}
+              title="Save to Library"
+              aria-label="Save to Library"
             >
-              <Heart className={`w-3 h-3 ${isLiked ? 'fill-current' : ''}`} />
+              <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
             </button>
+
+            {/* Share / Copy Room Link */}
             <button
               type="button"
               onClick={copyRoomLink}
-              className={`p-1.5 rounded-full bg-carbon text-ash border border-graphite hover:text-warm-bone hover:border-mineral/50 transition-colors ${
-                copyStatus === 'copied' ? 'border-mineral text-mineral' : ''
-              }`}
-              aria-label="Share lounge link"
-              title="Copy shareable lounge link"
+              className="w-10 h-10 rounded-full flex items-center justify-center text-[#5E5873] dark:text-[#A19EB5] hover:text-[#12101F] dark:hover:text-white hover:bg-[#F3F0FA] dark:hover:bg-[#242138] transition-all"
+              title="Share Room Link"
+              aria-label="Share Room Link"
             >
               {copyStatus === 'copied' ? (
-                <Check className="w-3 h-3 text-mineral" />
+                <Check className="w-5 h-5 text-[#4ADE80]" />
               ) : (
-                <Share2 className="w-3 h-3" />
+                <Share2 className="w-5 h-5" />
               )}
             </button>
           </div>
         </div>
 
-        {/* Primary Stage Centerpiece: YouTube Video Monitor OR Vinyl Sleeve */}
-        <div className="relative w-full max-w-[316px] sm:max-w-[360px] md:max-w-[420px] lg:max-w-[480px] mb-4">
-          {/* Official YouTube Video Monitor Frame */}
-          <div
-            className={`w-full aspect-video rounded-[3px] bg-carbon border border-graphite shadow-md overflow-hidden relative ${
-              showVideoAsMain ? 'block' : 'hidden'
-            }`}
-          >
-            {/* YouTube IFrame Player Container (controls, branding & attribution completely visible and unobstructed) */}
-            <div id="nocturne-yt-player" className="w-full h-full" />
-          </div>
-
-          {/* 12" Vinyl Sleeve & Peeking Record Stage */}
-          <div
-            className={`relative w-full aspect-square transition-transform duration-700 ease-out ${
-              !showVideoAsMain || viewMode === 'sleeve' ? 'block' : 'hidden'
-            } ${
-              isPlaying
-                ? '-translate-x-2.5 sm:-translate-x-4 lg:-translate-x-5'
-                : 'translate-x-0'
-            }`}
-          >
-            {/* Physical 180g Heavyweight Vinyl Disc */}
-            <div
-              className={`absolute top-1.5 -right-5 sm:-right-8 lg:-right-10 w-[94%] h-[94%] rounded-full bg-carbon border border-graphite flex items-center justify-center transition-transform duration-700 ease-out shadow-md ${
-                isPlaying
-                  ? 'translate-x-5 sm:translate-x-8 lg:translate-x-10'
-                  : 'translate-x-0'
-              }`}
-            >
-              <div
-                className={`relative w-full h-full rounded-full flex items-center justify-center overflow-hidden border border-graphite/40 ${
-                  isPlaying ? 'animate-spin-slow' : ''
-                }`}
-              >
-                <div className="absolute inset-0 rounded-full pointer-events-none bg-[radial-gradient(circle,var(--tw-gradient-stops))] from-graphite via-carbon to-deep-ink" />
-                <div className="absolute inset-[8%] rounded-full border border-graphite/30 pointer-events-none" />
-                <div className="absolute inset-[16%] rounded-full border border-graphite/20 pointer-events-none" />
-                <div className="absolute inset-[24%] rounded-full border border-graphite/35 pointer-events-none" />
-                <div className="absolute inset-[32%] rounded-full border border-graphite/25 pointer-events-none" />
-                <div className="absolute inset-[37%] rounded-full border border-graphite/50 pointer-events-none" />
-
-                {/* Center Spindle Label */}
-                <div
-                  className={`relative z-10 w-[27%] h-[27%] rounded-full bg-deep-ink border ${spindleAccentClass} flex flex-col items-center justify-center p-1 text-center select-none shadow-sm`}
-                >
-                  <span className="font-sans text-[8px] sm:text-[9px] font-medium text-ash/80">
-                    {catalogMark}
-                  </span>
-                  <span className="font-display font-bold text-[8px] sm:text-[10px] text-warm-bone tracking-tight leading-none mt-0.5">
-                    NOCTURNE
-                  </span>
-                  <span className="font-sans text-[7px] text-ash/70 mt-0.5">
-                    33⅓ RPM
-                  </span>
-                  <div className="w-2.5 h-2.5 rounded-full bg-deep-ink border border-graphite mt-0.5" />
-                </div>
-              </div>
-            </div>
-
-            {/* Die-Cut Cardboard Jacket / Sleeve */}
-            <div className="relative z-10 w-full h-full rounded-[3px] bg-carbon border border-graphite shadow-md overflow-hidden flex flex-col justify-between">
-              <div className="relative w-full flex-1 overflow-hidden bg-deep-ink">
-                <ArtworkRenderer artworkId={activeArtworkId} className="w-full h-full" />
-                <div className="absolute top-0 right-0 bottom-0 w-3 bg-gradient-to-l from-deep-ink/50 to-transparent pointer-events-none" />
-              </div>
-
-              <div className="shrink-0 px-3 py-2 border-t border-graphite/70 bg-carbon flex items-center justify-between text-[11px] font-sans">
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-warm-bone font-medium">
-                    {catalogMark}
-                  </span>
-                  <span className="text-graphite font-mono">/</span>
-                  <span className="text-ash truncate max-w-[170px] sm:max-w-[220px]">
-                    {displayTitle}
-                  </span>
-                </div>
-                {currentTrack?.sourceType === 'shared-audio' && (
-                  <span className="font-sans text-ash/70 text-[10px]">Shared room audio</span>
-                )}
-              </div>
-            </div>
-          </div>
-
-        </div>
-
-        {/* Track Title & Artist Information Display */}
-        <div className="text-center max-w-[316px] sm:max-w-[360px] md:max-w-md mb-2 sm:mb-3 px-2">
-          <h2 className="font-display text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-warm-bone truncate leading-tight">
-            {displayTitle}
-          </h2>
-          <p className="font-sans text-xs sm:text-sm text-ash mt-0.5 truncate">
-            {displayArtist}
-          </p>
-
-          <div className="mt-1 flex items-center justify-center gap-1.5 text-xs text-ash">
-            {currentTrack && <>
-              <span>Queued by {currentTrack.addedBy.name}</span>
-              <span className="text-graphite font-mono">·</span>
-              <span className="font-mono text-[11px]">{currentTrack.addedAt}</span>
-            </>}
-          </div>
-        </div>
-
-        {/* YouTube Video Error Alert if embedding is restricted */}
+        {/* YouTube Video Error Alert */}
         {ytErrorNotice && (
           <div
             role="alert"
-            aria-live="polite"
-            className="w-full max-w-[316px] sm:max-w-[360px] md:max-w-md p-2.5 rounded-[2px] bg-oxide/15 border border-oxide/50 text-oxide text-xs mb-3 flex items-center justify-between gap-2"
+            className="mt-4 p-3 rounded-xl bg-[#FF5C8A]/15 border border-[#FF5C8A]/40 text-[#FF5C8A] text-xs flex items-center justify-between gap-2"
           >
             <div className="flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
@@ -463,88 +637,147 @@ export const VinylStage: React.FC = () => {
             <button
               type="button"
               onClick={() => skipTrack(true)}
-              className="flex items-center gap-1 px-2 py-1 rounded-[2px] bg-oxide/20 hover:bg-oxide/30 border border-oxide/60 text-warm-bone text-[10px] font-sans font-medium shrink-0"
+              className="px-2.5 py-1 rounded-full bg-[#F43F5E] hover:bg-[#e11d48] dark:bg-[#FF5C8A] dark:hover:bg-[#ff477b] text-white text-[11px] font-semibold transition-transform active:scale-95"
             >
-              <SkipForward className="w-3 h-3" />
-              <span>Next</span>
+              Next
             </button>
           </div>
         )}
 
-        {/* Acoustic Harmonic Amplitude Monitor */}
-        <div className="w-full max-w-[280px] sm:max-w-md mb-2 sm:mb-3 px-1 sm:px-2">
-          <AudioVisualizer lineCount={44} />
+        {/* ============================================================== */}
+        {/* SIGNATURE FLOWING WAVEFORM VISUALIZER CENTERPIECE               */}
+        {/* ============================================================== */}
+        <div className="mt-5 p-4 sm:p-5 rounded-xl bg-[#F8F7FC] dark:bg-[#0F0E17]/85 border border-[#EDEAF5] dark:border-[#2D2945] relative transition-colors">
+          <div className="flex items-center justify-between text-xs text-[#5E5873] dark:text-[#A19EB5] mb-2.5 font-medium">
+            <span className="flex items-center gap-1.5 text-[#0284C7] dark:text-[#38BDF8]">
+              <span className="material-symbols-outlined text-[16px]">graphic_eq</span>
+              <span>Flowing Audio Waveform</span>
+            </span>
+            <span className="text-[#8E88A8] dark:text-[#6B6785] text-[11px]">Room Audio • Stereo</span>
+          </div>
+
+          {/* Interactive Waveform Canvas Container */}
+          <div
+            onClick={handleWaveformSeek}
+            className="relative w-full h-24 sm:h-28 overflow-hidden rounded-xl bg-white dark:bg-[#12101F] border border-[#EDEAF5] dark:border-transparent flex items-center cursor-pointer group select-none shadow-xs"
+            title="Click or drag anywhere on waveform to seek"
+          >
+            <canvas ref={canvasRef} className="w-full h-full block" />
+
+            {/* Glowing Scrubber Needle with knob at progressPercent */}
+            <div
+              className="absolute top-0 bottom-0 w-[2px] bg-white pointer-events-none transition-all duration-75 flex flex-col items-center justify-center shadow-[0_0_12px_#FF5C8A]"
+              style={{ left: `${progressPercent}%` }}
+            >
+              <div className="w-3.5 h-3.5 rounded-full bg-[#FF5C8A] ring-2 ring-white shadow-lg shadow-[#FF5C8A]/60 -mt-0.5" />
+            </div>
+          </div>
+
+          {/* Playback Timestamps */}
+          <div className="flex items-center justify-between mt-3 px-1 text-xs font-mono font-medium text-[#5E5873] dark:text-[#A19EB5]">
+            <span className="text-[#12101F] dark:text-white font-semibold">{formatTime(progressSeconds)}</span>
+            <div className="flex items-center gap-1.5 text-[11px] text-[#5E5873] dark:text-[#6B6785] font-sans">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#7C3AED] dark:bg-[#8B5CF6]" />
+              <span>Shared Session Time</span>
+            </div>
+            <span>{durationSeconds > 0 ? formatTime(durationSeconds) : '—:—'}</span>
+          </div>
+
+          {/* Playback Transport Controls Cluster Centered */}
+          <div className="flex items-center justify-center gap-4 sm:gap-6 mt-4">
+            {/* Shuffle */}
+            <button
+              type="button"
+              className="w-9 h-9 rounded-full flex items-center justify-center text-[#5E5873] dark:text-[#A19EB5] hover:text-[#12101F] dark:hover:text-white hover:bg-[#F3F0FA] dark:hover:bg-[#242138] transition-colors"
+              title="Shuffle"
+              aria-label="Shuffle"
+            >
+              <Shuffle className="w-4 h-4" />
+            </button>
+
+            {/* Previous Track */}
+            <button
+              type="button"
+              onClick={() => previousTrack(true)}
+              className="w-10 h-10 rounded-full flex items-center justify-center text-[#12101F] dark:text-white hover:text-[#7C3AED] dark:hover:text-white hover:bg-[#F3F0FA] dark:hover:bg-[#242138] transition-colors active:scale-95"
+              title="Previous Track"
+              aria-label="Previous Track"
+            >
+              <SkipBack className="w-5 h-5 fill-current" />
+            </button>
+
+            {/* Prominent 56px circular Play/Pause button with radiant violet-coral glow */}
+            <button
+              type="button"
+              onClick={togglePlay}
+              className="w-14 h-14 rounded-full bg-gradient-to-r from-[#8B5CF6] via-[#EC4899] to-[#FF5C8A] text-white flex items-center justify-center shadow-lg shadow-[#8B5CF6]/40 hover:shadow-xl hover:shadow-[#FF5C8A]/50 transition-all duration-200 active:scale-95"
+              title={isPlaying ? 'Pause' : 'Play'}
+              aria-label={isPlaying ? 'Pause' : 'Play'}
+            >
+              {isPlaying ? (
+                <Pause className="w-7 h-7 fill-current" />
+              ) : (
+                <Play className="w-7 h-7 fill-current ml-1" />
+              )}
+            </button>
+
+            {/* Next Track */}
+            <button
+              type="button"
+              onClick={() => skipTrack(true)}
+              className="w-10 h-10 rounded-full flex items-center justify-center text-[#12101F] dark:text-white hover:text-[#7C3AED] dark:hover:text-white hover:bg-[#F3F0FA] dark:hover:bg-[#242138] transition-colors active:scale-95"
+              title="Next Track"
+              aria-label="Next Track"
+            >
+              <SkipForward className="w-5 h-5 fill-current" />
+            </button>
+
+            {/* Repeat */}
+            <button
+              type="button"
+              className="w-9 h-9 rounded-full flex items-center justify-center text-[#7C3AED] dark:text-[#8B5CF6] hover:bg-[#F3F0FA] dark:hover:bg-[#242138] transition-colors"
+              title="Repeat Room"
+              aria-label="Repeat Room"
+            >
+              <Repeat className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
-        {/* Console Scrubber Strip */}
-        <div className="w-full max-w-[280px] sm:max-w-md space-y-2 px-1 sm:px-2">
-          <div className="relative flex items-center">
+        {/* Bottom Volume & Audio Output Row */}
+        <div className="flex items-center justify-between pt-4 mt-4 border-t border-[#EDEAF5] dark:border-[#2D2945]">
+          <div className="flex items-center gap-2 text-xs text-[#5E5873] dark:text-[#A19EB5]">
+            <Speaker className="w-4 h-4 text-[#7C3AED] dark:text-[#8B5CF6]" />
+            <span className="hidden sm:inline">Room Audio • Stereo</span>
+            <span className="sm:hidden">Stereo</span>
+          </div>
+
+          <div className="flex items-center gap-3 w-36 sm:w-44">
+            <button
+              type="button"
+              onClick={toggleMute}
+              className="text-[#5E5873] dark:text-[#A19EB5] hover:text-[#12101F] dark:hover:text-white transition-colors"
+              aria-label={isMuted ? 'Unmute' : 'Mute'}
+            >
+              {isMuted || volume === 0 ? (
+                <VolumeX className="w-4 h-4 text-[#F43F5E]" />
+              ) : (
+                <Volume2 className="w-4 h-4" />
+              )}
+            </button>
             <input
               type="range"
-              min={0}
-              max={100}
-              step={0.1}
-              value={progressPercent}
-              onChange={handleScrubberChange}
-              className="w-full h-1.5 bg-carbon rounded-none appearance-none cursor-pointer accent-mineral border border-graphite/60"
-              disabled={!currentTrack || durationSeconds <= 0}
-              aria-label="Track playback progress"
+              min="0"
+              max="100"
+              value={isMuted ? 0 : volume}
+              onChange={(e) => setVolume(Number(e.target.value))}
+              className="w-full h-1.5 bg-[#EDEAF5] dark:bg-[#242138] rounded-full accent-[#7C3AED] dark:accent-[#8B5CF6] cursor-pointer"
+              aria-label="Volume Slider"
             />
-          </div>
-          <div className="flex items-center justify-between text-xs text-ash px-0.5">
-            <span className="font-mono text-warm-bone text-[11px] sm:text-xs">
-              {formatTime(progressSeconds)}
-            </span>
-            <span className="font-mono text-warm-bone text-[11px] sm:text-xs">
-              {formatTime(durationSeconds)}
+            <span className="text-xs text-[#5E5873] dark:text-[#6B6785] font-mono w-8 text-right">
+              {isMuted ? 0 : volume}%
             </span>
           </div>
-
-          {/* Audio Engine & Sync Status Bar */}
-          <div className="flex items-center justify-between text-[11px] text-ash/80 px-0.5 pt-1.5 border-t border-graphite/40">
-            <span className="font-sans flex items-center gap-1.5">
-              <span
-                className={`w-1.5 h-1.5 rounded-full ${
-                  isYouTubeActive
-                    ? 'bg-mineral'
-                    : hasPhysicalAudio
-                    ? 'bg-mineral'
-                    : 'bg-ash/40'
-                }`}
-              />
-              <span className="text-[10px] sm:text-[11px]">
-                {isYouTubeActive
-                  ? 'YouTube embed'
-                  : hasPhysicalAudio
-                  ? currentTrack?.isLocalFile
-                    ? `Local audio (${currentTrack?.fileSize || 'file'})`
-                    : currentTrack?.sourceType === 'shared-audio'
-                    ? 'Shared room audio'
-                    : currentTrack?.isTestFixture
-                    ? 'Generated test tone fixture'
-                    : 'Audio source'
-                  : currentTrack ? 'No playable audio source' : 'No source selected'}
-              </span>
-            </span>
-          </div>
-
-          {/* Explicit Notice regarding Local Audio Privacy in Shared Rooms */}
-          {hasPhysicalAudio && currentTrack?.isLocalFile && (
-            <div className="p-2 rounded-[2px] bg-carbon border border-graphite text-[10px] sm:text-[11px] text-ash/90 mt-1.5 leading-relaxed font-sans">
-              <span className="font-medium text-warm-bone">Local Master Audio:</span>{' '}
-              This file plays only on your device unless you choose “Share with room” in the tracklist. Sharing uploads an audio copy so room guests can stream it.
-            </div>
-          )}
-
-          {audioError && (
-            <div
-              role="alert"
-              aria-live="polite"
-              className="p-2 rounded-[2px] bg-oxide/10 border border-oxide/40 text-oxide text-xs mt-2"
-            >
-              {audioError}
-            </div>
-          )}
         </div>
       </div>
     </div>

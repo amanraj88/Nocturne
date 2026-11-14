@@ -6,7 +6,7 @@ import { validateAudioBuffer } from '@/lib/audioValidation';
 
 interface LoungeContextType {
   currentRoom: Room;
-  roomLoadState: 'ready' | 'loading' | 'not-found' | 'error';
+  roomLoadState: 'ready' | 'loading' | 'not-found' | 'error' | 'ended';
   rooms: Room[];
   queue: Track[];
   currentTrack: Track | null;
@@ -21,6 +21,9 @@ interface LoungeContextType {
   reactions: ReactionBurst[];
   isSearchOpen: boolean;
   isCreateRoomOpen: boolean;
+  theme: 'dark' | 'light';
+  setTheme: (t: 'dark' | 'light') => void;
+  toggleTheme: () => void;
   // Dual audio engine state
   hasPhysicalAudio: boolean;
   isYouTubeActive: boolean;
@@ -32,6 +35,7 @@ interface LoungeContextType {
   shareLocalAudioFile: (trackId: string) => Promise<void>;
   sharingTrackId: string | null;
   registerYouTubePlayer: (player: any) => void;
+  registerYouTubeDuration: (duration: number) => void;
   syncYouTubePlaybackState: (isPlaying: boolean) => void;
   // Actions
   setQuality: (q: GraphicsQuality) => void;
@@ -43,7 +47,7 @@ interface LoungeContextType {
   setVolume: (v: number) => void;
   toggleMute: () => void;
   voteSkip: (trackId: string) => void;
-  addTrackToQueue: (track: Partial<Track>) => void;
+  addTrackToQueue: (track: Partial<Track>) => Promise<boolean>;
   removeTrack: (trackId: string) => void;
   sendChatMessage: (text: string) => void;
   triggerReaction: (emoji: string) => void;
@@ -52,6 +56,8 @@ interface LoungeContextType {
   resolveAndSetRoom: (slugOrId: string) => Promise<void>;
   setIsSearchOpen: (open: boolean) => void;
   setIsCreateRoomOpen: (open: boolean) => void;
+  leaveRoom: () => Promise<void>;
+  endRoom: () => Promise<boolean>;
 }
 
 const LoungeContext = createContext<LoungeContextType | undefined>(undefined);
@@ -85,49 +91,52 @@ const EMPTY_ROOM: Room = {
 };
 
 export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Persistent anonymous client identity for room participation
-  const [clientId] = useState<string>(() => {
-    if (typeof window !== 'undefined') {
-      const stored = sessionStorage.getItem('nocturne_client_id');
-      if (stored) return stored;
-      const gen = 'usr-' + Math.random().toString(36).substring(2, 9);
-      try {
-        sessionStorage.setItem('nocturne_client_id', gen);
-      } catch (e) {}
-      return gen;
-    }
-    return 'usr-guest';
-  });
+  // Persistent anonymous client identity for room participation (deterministic SSR defaults)
+  const [clientId, setClientId] = useState<string>('usr-guest');
+  const [clientName, setClientName] = useState<string>('Listener 101');
 
-  const [clientName] = useState<string>(() => {
-    if (typeof window !== 'undefined') {
-      const stored = sessionStorage.getItem('nocturne_client_name');
-      if (stored) return stored;
-      const gen = 'Listener ' + Math.floor(100 + Math.random() * 900);
-      try {
-        sessionStorage.setItem('nocturne_client_name', gen);
-      } catch (e) {}
-      return gen;
-    }
-    return 'Listener 101';
-  });
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      let id = sessionStorage.getItem('nocturne_client_id');
+      if (!id) {
+        id = 'usr-' + Math.random().toString(36).substring(2, 9);
+        sessionStorage.setItem('nocturne_client_id', id);
+      }
+      setClientId(id);
 
-  const [rooms, setRooms] = useState<Room[]>(() => {
-    if (typeof window !== 'undefined') {
+      let name = sessionStorage.getItem('nocturne_client_name');
+      if (!name) {
+        name = 'Listener ' + Math.floor(100 + Math.random() * 900);
+        sessionStorage.setItem('nocturne_client_name', name);
+      }
+      setClientName(name);
+    } catch (e) {}
+  }, []);
+
+  const [rooms, setRooms] = useState<Room[]>([]);
+
+  // Periodic active rooms directory refresh
+  useEffect(() => {
+    let isCancelled = false;
+    const fetchActiveDirectory = async () => {
       try {
-        const stored = sessionStorage.getItem('nocturne_custom_rooms');
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            return [...FEATURED_ROOMS, ...parsed];
+        const res = await fetch('/api/rooms');
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.rooms) && !isCancelled) {
+            setRooms(data.rooms);
           }
         }
-      } catch {
-        // ignore
-      }
-    }
-    return FEATURED_ROOMS;
-  });
+      } catch (e) {}
+    };
+    void fetchActiveDirectory();
+    const interval = setInterval(fetchActiveDirectory, 15000);
+    return () => {
+      isCancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
 
   // User identity state for Supabase anonymous authentication
   const [authUid, setAuthUid] = useState<string | null>(() => {
@@ -157,15 +166,20 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   }, []);
 
-  const [currentRoom, setCurrentRoom] = useState<Room>(FEATURED_ROOMS[0]);
-  const [roomLoadState, setRoomLoadState] = useState<'ready' | 'loading' | 'not-found' | 'error'>('ready');
-  const [queue, setQueue] = useState<Track[]>(INITIAL_TRACKS);
+  const [currentRoom, setCurrentRoom] = useState<Room>(EMPTY_ROOM);
+  const [roomLoadState, setRoomLoadState] = useState<'ready' | 'loading' | 'not-found' | 'error' | 'ended'>('ready');
+  const [queue, setQueue] = useState<Track[]>([]);
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progressSeconds, setProgressSeconds] = useState(0);
   const [physicalDuration, setPhysicalDuration] = useState<number | null>(null);
-  const [volume, setVolumeState] = useState(82);
-  const [isMuted, setIsMuted] = useState(false);
+  const [volume, setVolumeState] = useState<number>(82);
+  const [isMuted, setIsMuted] = useState<boolean>(false);
+
+  const volumeRef = useRef<number>(volume);
+  volumeRef.current = volume;
+  const isMutedRef = useRef<boolean>(isMuted);
+  isMutedRef.current = isMuted;
   const [quality, setQualityState] = useState<GraphicsQuality>('high');
   const [members, setMembers] = useState<UserProfile[]>([]);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -173,6 +187,65 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isCreateRoomOpen, setIsCreateRoomOpen] = useState(false);
 
+  // Deterministic server default for SSR hydration parity
+  const [theme, setThemeState] = useState<'dark' | 'light'>('dark');
+
+  // Hydrate client preferences safely after mount to prevent SSR mismatch
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const savedVolume = localStorage.getItem('nocturne_volume');
+      if (savedVolume !== null) {
+        const parsed = Number(savedVolume);
+        if (!isNaN(parsed) && parsed >= 0 && parsed <= 100) {
+          setVolumeState(parsed);
+        }
+      }
+      const savedMuted = localStorage.getItem('nocturne_muted');
+      if (savedMuted !== null) {
+        setIsMuted(savedMuted === 'true');
+      }
+      const savedTheme = localStorage.getItem('nocturne_theme');
+      if (savedTheme === 'light' || savedTheme === 'dark') {
+        setThemeState(savedTheme);
+      } else if (window.matchMedia('(prefers-color-scheme: light)').matches) {
+        setThemeState('light');
+      }
+    } catch (e) {}
+  }, []);
+
+  // Synchronize DOM attributes with active theme
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      document.documentElement.classList.remove('dark', 'light');
+      document.documentElement.classList.add(theme);
+      document.documentElement.setAttribute('data-theme', theme);
+      const meta = document.querySelector('meta[name="color-scheme"]');
+      if (meta) meta.setAttribute('content', theme);
+      const themeMeta = document.getElementById('theme-color-meta');
+      if (themeMeta) themeMeta.setAttribute('content', theme === 'light' ? '#F8F7FC' : '#0F0E17');
+    }
+  }, [theme]);
+
+  const setTheme = useCallback((t: 'dark' | 'light') => {
+    setThemeState(t);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('nocturne_theme', t);
+      } catch (e) {}
+      document.documentElement.classList.remove('dark', 'light');
+      document.documentElement.classList.add(t);
+      document.documentElement.setAttribute('data-theme', t);
+      const meta = document.querySelector('meta[name="color-scheme"]');
+      if (meta) meta.setAttribute('content', t);
+      const themeMeta = document.getElementById('theme-color-meta');
+      if (themeMeta) themeMeta.setAttribute('content', t === 'light' ? '#F8F7FC' : '#0F0E17');
+    }
+  }, []);
+
+  const toggleTheme = useCallback(() => {
+    setTheme(theme === 'dark' ? 'light' : 'dark');
+  }, [theme, setTheme]);
   // Dual audio engine state
   const [hasPhysicalAudio, setHasPhysicalAudio] = useState(false);
   const [audioError, setAudioError] = useState<string | null>(null);
@@ -183,6 +256,7 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // Player references
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const ytPlayerRef = useRef<any>(null);
+  const lastLoadedYouTubeIdRef = useRef<string | null>(null);
   const objectUrlsRef = useRef<Set<string>>(new Set());
   const localFilesRef = useRef<Map<string, File>>(new Map());
   const pendingSharedSeekRef = useRef<number | null>(null);
@@ -201,6 +275,7 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const playbackRevisionRef = useRef(0);
   const lastReceivedRevisionRef = useRef(0);
   const lastReceivedTimestampRef = useRef(0);
+  const lastSeekTimestampRef = useRef<number | null>(null);
   const seenEventIdsRef = useRef<Set<string>>(new Set());
   const isUploadingRef = useRef(false);
 
@@ -382,11 +457,29 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
       }
 
-      // 7. Apply seek / drift correction (2.0s tolerance threshold)
+      // 7. Apply seek / drift correction (immediate on SEEK payload, or 2.0s tolerance threshold)
       if (typeof payload.progressSeconds === 'number') {
-        const drift = Math.abs(progressSecondsRef.current - payload.progressSeconds);
-        if (drift > 2.0) {
+        const localCurrentTime = isYouTubeActiveRef.current && ytPlayerRef.current?.getCurrentTime
+          ? (ytPlayerRef.current.getCurrentTime() || 0)
+          : (audioRef.current && isFinite(audioRef.current.currentTime) ? audioRef.current.currentTime : progressSecondsRef.current);
+        const drift = Math.abs(localCurrentTime - payload.progressSeconds);
+        if (payload.type === 'SEEK') {
+          lastSeekTimestampRef.current = Date.now();
           setProgressSeconds(payload.progressSeconds);
+          progressSecondsRef.current = payload.progressSeconds;
+          if (isYouTubeActiveRef.current && ytPlayerRef.current && typeof ytPlayerRef.current.seekTo === 'function') {
+            try {
+              ytPlayerRef.current.seekTo(payload.progressSeconds, true);
+            } catch (err) {}
+          } else if (isLocalAudioActiveRef.current && audioRef.current && isFinite(audioRef.current.duration)) {
+            try {
+              audioRef.current.currentTime = payload.progressSeconds;
+            } catch (err) {}
+          }
+        } else if (drift > 2.0) {
+          lastSeekTimestampRef.current = Date.now();
+          setProgressSeconds(payload.progressSeconds);
+          progressSecondsRef.current = payload.progressSeconds;
           if (isYouTubeActiveRef.current && ytPlayerRef.current && typeof ytPlayerRef.current.seekTo === 'function') {
             try {
               ytPlayerRef.current.seekTo(payload.progressSeconds, true);
@@ -670,6 +763,22 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           .on('presence', { event: 'sync' }, syncPresence)
           .on('presence', { event: 'join' }, syncPresence)
           .on('presence', { event: 'leave' }, syncPresence)
+          .on('postgres_changes', {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'chat_messages',
+            filter: `room_id=eq.${roomId}`,
+          }, () => {
+            if (!isCancelled) void refreshPersistedRoomState();
+          })
+          .on('postgres_changes', {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'tracks',
+            filter: `room_id=eq.${roomId}`,
+          }, () => {
+            if (!isCancelled) void refreshPersistedRoomState();
+          })
           .on('broadcast', { event: 'playback' }, ({ payload }) => {
             if (isCancelled) return;
             handleRealtimePlayback(payload);
@@ -682,13 +791,46 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           .on('broadcast', { event: 'chat_message' }, ({ payload }) => {
             if (isCancelled || typeof payload?.senderId !== 'string' || !payload?.message?.id) return;
             if (payload.senderId === effectiveUid) return;
+            if (payload.message) {
+              setChatMessages((prev) => {
+                if (prev.some((m) => m.id === payload.message.id)) return prev;
+                return [...prev, payload.message];
+              });
+            }
             void refreshPersistedRoomState();
           })
           .on('broadcast', { event: 'queue_update' }, ({ payload }) => {
             if (isCancelled || typeof payload?.senderId !== 'string') return;
             if (payload.senderId === effectiveUid) return;
+            if (Array.isArray(payload.queue)) {
+              setQueue(payload.queue);
+              queueRef.current = payload.queue;
+            }
             void refreshPersistedRoomState();
+          })
+          .on('broadcast', { event: 'room_ended' }, () => {
+            if (isCancelled) return;
+            if (audioRef.current) {
+              audioRef.current.pause();
+              audioRef.current.removeAttribute('src');
+            }
+            try { ytPlayerRef.current?.pauseVideo?.(); } catch (e) {}
+            setIsPlaying(false);
+            isPlayingRef.current = false;
+            setProgressSeconds(0);
+            progressSecondsRef.current = 0;
+            setPhysicalDuration(null);
+            setQueue([]);
+            queueRef.current = [];
+            setCurrentTrackIndex(-1);
+            currentTrackIndexRef.current = -1;
+            setCurrentRoom(EMPTY_ROOM);
+            currentRoomRef.current = EMPTY_ROOM;
+            setMembers([]);
+            setRoomLoadState('ended');
           });
+
+        let channelHeartbeatTimer: NodeJS.Timeout | null = null;
 
         channel.subscribe(async (status) => {
           if (isCancelled) return;
@@ -705,14 +847,69 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             } catch (e) {
               console.warn('[NOCTURNE Realtime] Presence track notice:', e);
             }
+
+            // Register active membership in database
+            try {
+              await supabase.rpc('touch_room_membership', {
+                p_room_id: roomId,
+                p_user_id: effectiveUid,
+                p_display_name: clientName || 'Anonymous Listener',
+                p_role: isHost ? 'host' : 'listener',
+                p_is_active: true,
+              });
+            } catch (e) {}
+
+            // Periodic heartbeat every 15s while active
+            if (!channelHeartbeatTimer) {
+              channelHeartbeatTimer = setInterval(async () => {
+                if (isCancelled) return;
+                try {
+                  await supabase.rpc('touch_room_membership', {
+                    p_room_id: roomId,
+                    p_user_id: effectiveUid,
+                    p_display_name: clientName || 'Anonymous Listener',
+                    p_role: isHost ? 'host' : 'listener',
+                    p_is_active: true,
+                  });
+                } catch (e) {}
+              }, 15000);
+            }
           } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
             console.warn(`[NOCTURNE Realtime] Channel subscription status: ${status} on ${channelName}`);
           }
         });
+
+        // Tab/window closing beacon/handler
+        const handleBeforeUnload = () => {
+          try {
+            Promise.resolve(
+              supabase.rpc('leave_room_membership', {
+                p_room_id: roomId,
+                p_user_id: effectiveUid,
+              })
+            ).catch(() => {});
+          } catch (e) {}
+        };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+
+        // Store unmount cleanup
+        return () => {
+          if (channelHeartbeatTimer) clearInterval(channelHeartbeatTimer);
+          window.removeEventListener('beforeunload', handleBeforeUnload);
+          try {
+            Promise.resolve(
+              supabase.rpc('leave_room_membership', {
+                p_room_id: roomId,
+                p_user_id: effectiveUid,
+              })
+            ).catch(() => {});
+          } catch (e) {}
+        };
       })();
 
       return () => {
         isCancelled = true;
+        if (heartbeatTimer) clearInterval(heartbeatTimer);
         if (activeChannel) {
           try {
             Promise.resolve(activeChannel.untrack()).catch(() => {});
@@ -1013,28 +1210,37 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
   }, []);
 
-  // Register YouTube Player instance from VinylStage
-  const registerYouTubePlayer = useCallback(
-    (player: any) => {
-      ytPlayerRef.current = player;
-      if (player && typeof player.setVolume === 'function') {
-        try {
-          player.setVolume(volume);
-          if (isMuted) player.mute();
-          else player.unMute();
-        } catch (e) {}
+  // Register YouTube Player instance from VinylStage (STABLE: empty deps)
+  const registerYouTubePlayer = useCallback((player: any) => {
+    ytPlayerRef.current = player;
+    if (player && typeof player.setVolume === 'function') {
+      try {
+        player.setVolume(volumeRef.current);
+        if (isMutedRef.current) {
+          player.mute();
+        } else {
+          player.unMute();
+        }
+      } catch (e) {}
+    }
+  }, []);
+
+  const registerYouTubeDuration = useCallback((duration: number) => {
+    if (!duration || duration <= 0) return;
+    const rounded = Math.round(duration);
+    setPhysicalDuration(rounded);
+
+    const track = currentTrackRef.current;
+    if (track && track.durationSeconds !== rounded) {
+      track.durationSeconds = rounded;
+      if (isSupabaseConfigured() && track.id) {
+        void supabase
+          .from('tracks')
+          .update({ duration_seconds: rounded })
+          .eq('id', track.id);
       }
-      const activeTrack = currentTrackRef.current;
-      if (isYouTubeActiveRef.current && activeTrack?.youtubeId) {
-        try {
-          if (isPlayingRef.current) player.loadVideoById(activeTrack.youtubeId);
-          else player.cueVideoById(activeTrack.youtubeId);
-          if (progressSecondsRef.current > 0) player.seekTo(progressSecondsRef.current, true);
-        } catch (e) {}
-      }
-    },
-    [volume, isMuted]
-  );
+    }
+  }, []);
 
   const syncYouTubePlaybackState = useCallback(
     (nextPlaying: boolean) => {
@@ -1044,6 +1250,11 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (isPlayingRef.current === nextPlaying) return;
       isPlayingRef.current = nextPlaying;
       setIsPlaying(nextPlaying);
+
+      // Only host broadcasts room-wide playback states to avoid desync
+      const isHost = currentRoomRef.current?.host?.id === (authUidRef.current || clientId);
+      if (!isHost) return;
+
       const actionType = nextPlaying ? 'PLAY' : 'PAUSE';
       broadcastPlayback({
         type: actionType,
@@ -1052,7 +1263,7 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         trackId: currentTrackRef.current.id,
       });
     },
-    [broadcastPlayback]
+    [broadcastPlayback, clientId]
   );
 
   // Synchronize currentTrack with active engine
@@ -1068,14 +1279,27 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setHasPhysicalAudio(false);
       setAudioError(null);
 
-      if (yt && typeof yt.loadVideoById === 'function' && currentTrack?.youtubeId) {
-        try {
-          if (isPlaying) {
-            yt.loadVideoById(currentTrack.youtubeId);
-          } else {
-            yt.cueVideoById(currentTrack.youtubeId);
-          }
-        } catch (e) {}
+      if (yt && currentTrack?.youtubeId) {
+        if (lastLoadedYouTubeIdRef.current !== currentTrack.youtubeId) {
+          lastLoadedYouTubeIdRef.current = currentTrack.youtubeId;
+          const startSec = Math.floor(progressSecondsRef.current || 0);
+          try {
+            if (isPlaying && typeof yt.loadVideoById === 'function') {
+              yt.loadVideoById({ videoId: currentTrack.youtubeId, startSeconds: startSec });
+            } else if (typeof yt.cueVideoById === 'function') {
+              yt.cueVideoById({ videoId: currentTrack.youtubeId, startSeconds: startSec });
+            }
+          } catch (e) {}
+        } else {
+          // Track is already loaded: only toggle play/pause; do NOT reload video
+          try {
+            if (isPlaying && typeof yt.playVideo === 'function') {
+              yt.playVideo();
+            } else if (!isPlaying && typeof yt.pauseVideo === 'function') {
+              yt.pauseVideo();
+            }
+          } catch (e) {}
+        }
       }
     } else if (isLocalAudioActive && currentTrack?.audioUrl) {
       // PREVENT SIMULTANEOUS: PAUSE YOUTUBE IMMEDIATELY!
@@ -1166,11 +1390,21 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const interval = setInterval(() => {
       const yt = ytPlayerRef.current;
       if (yt) {
+        // Prevent stale asynchronous YouTube buffer time right after a seek from overriding progress
+        if (lastSeekTimestampRef.current && Date.now() - lastSeekTimestampRef.current < 1500) {
+          return;
+        }
+
         if (typeof yt.getCurrentTime === 'function') {
           try {
             const curTime = yt.getCurrentTime();
+            const playerState = typeof yt.getPlayerState === 'function' ? yt.getPlayerState() : -1;
             if (isPlayingRef.current && typeof curTime === 'number' && isFinite(curTime)) {
-              setProgressSeconds(Math.floor(curTime));
+              if (curTime > 0 || playerState === window.YT?.PlayerState?.PLAYING) {
+                const floored = Math.floor(curTime);
+                setProgressSeconds(floored);
+                progressSecondsRef.current = floored;
+              }
             }
           } catch (e) {}
         }
@@ -1197,9 +1431,12 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return () => clearInterval(interval);
   }, [isYouTubeActive, dispatchServerAction]);
 
-  // One participant periodically publishes the actual playhead for room sync.
+  // Room host periodically publishes the actual playhead for room sync.
   useEffect(() => {
     if (!isPlaying || !currentTrack || isBrowserLocalTrack(currentTrack)) return;
+
+    const isHost = currentRoomRef.current?.host?.id === (authUidRef.current || clientId);
+    if (!isHost) return;
 
     const interval = setInterval(() => {
       if (isYouTubeActive && ytPlayerRef.current?.getPlayerState?.() !== 1) return;
@@ -1208,15 +1445,54 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         ? ytPlayerRef.current?.getCurrentTime?.()
         : audioRef.current?.currentTime;
       if (typeof time !== 'number' || !isFinite(time)) return;
-      dispatchServerAction({
-        type: 'SYNC_PROGRESS',
-        trackId: currentTrack.id,
-        progressSeconds: Math.max(0, Math.floor(time)),
-      });
+      const currentSecs = Math.max(0, Math.floor(time));
+
+      if (isSupabaseConfigured() && currentRoomRef.current?.id) {
+        void supabase
+          .rpc('sync_room_playback', {
+            p_room_id: currentRoomRef.current.id,
+            p_track_id: currentTrack.id,
+            p_is_playing: true,
+            p_progress_seconds: currentSecs,
+            p_source_type: isYouTubeActiveRef.current ? 'youtube' : 'fixture',
+            p_expected_revision: null,
+          })
+          .then(({ data }) => {
+            // Authoritative DB sync confirmed; broadcast playhead to all listening room members
+            if (realtimeChannelRef.current) {
+              const currentRev =
+                typeof data?.currentRevision === 'number'
+                  ? data.currentRevision
+                  : playbackRevisionRef.current;
+              realtimeChannelRef.current
+                .send({
+                  type: 'broadcast',
+                  event: 'playback',
+                  payload: {
+                    type: 'PLAY',
+                    eventId: `sync-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+                    senderId: authUidRef.current || clientId,
+                    timestamp: Date.now(),
+                    trackId: currentTrack.id,
+                    isPlaying: true,
+                    progressSeconds: currentSecs,
+                    revision: currentRev,
+                  },
+                })
+                .catch(() => {});
+            }
+          });
+      } else {
+        dispatchServerAction({
+          type: 'SYNC_PROGRESS',
+          trackId: currentTrack.id,
+          progressSeconds: currentSecs,
+        });
+      }
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [isPlaying, currentTrack?.id, isYouTubeActive, dispatchServerAction]);
+  }, [isPlaying, currentTrack?.id, isYouTubeActive, dispatchServerAction, clientId]);
 
   // Sync quality to document attribute for CSS switches
   const setQuality = (q: GraphicsQuality) => {
@@ -1283,11 +1559,26 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         audioRef.current.pause();
       }
 
+      // Authoritative read of exact real-time playback position at the moment of toggle
+      let realTime = progressSecondsRef.current;
+      if (isYouTubeActive && ytPlayerRef.current && typeof ytPlayerRef.current.getCurrentTime === 'function') {
+        try {
+          const t = ytPlayerRef.current.getCurrentTime();
+          if (typeof t === 'number' && isFinite(t)) {
+            realTime = t;
+          }
+        } catch {}
+      } else if (isLocalAudioActive && audioRef.current && isFinite(audioRef.current.currentTime)) {
+        realTime = audioRef.current.currentTime;
+      }
+      progressSecondsRef.current = realTime;
+      setProgressSeconds(Math.floor(realTime));
+
       if (broadcast && !isBrowserLocalTrack(currentTrack)) {
         broadcastPlayback({
           type: next ? 'PLAY' : 'PAUSE',
           isPlaying: next,
-          progressSeconds,
+          progressSeconds: realTime,
           trackId: currentTrack.id,
         });
       }
@@ -1298,7 +1589,9 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const seekTo = (seconds: number, broadcast = true) => {
     if (!currentTrack) return;
     const clamped = Math.max(0, Math.min(seconds, durationSeconds));
+    lastSeekTimestampRef.current = Date.now();
     setProgressSeconds(clamped);
+    progressSecondsRef.current = clamped;
 
     if (isYouTubeActive) {
       if (ytPlayerRef.current && typeof ytPlayerRef.current.seekTo === 'function') {
@@ -1381,7 +1674,8 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const selectTrack = (trackId: string, broadcast = true) => {
-    const idx = queue.findIndex((track) => track.id === trackId);
+    const list = queueRef.current.length > 0 ? queueRef.current : queue;
+    const idx = list.findIndex((track) => track.id === trackId);
     if (idx < 0) return;
 
     if (audioRef.current) audioRef.current.pause();
@@ -1389,19 +1683,23 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       try { ytPlayerRef.current.pauseVideo(); } catch (e) {}
     }
 
-    const targetTrack = queue[idx];
+    const targetTrack = list[idx];
     const hasPlayableSource = Boolean(targetTrack.youtubeId || targetTrack.audioUrl);
     setCurrentTrackIndex(idx);
+    currentTrackIndexRef.current = idx;
+    currentTrackRef.current = targetTrack;
     setProgressSeconds(0);
-    setPhysicalDuration(null);
+    progressSecondsRef.current = 0;
+    setPhysicalDuration(targetTrack.durationSeconds || null);
     setIsPlaying(hasPlayableSource);
+    isPlayingRef.current = hasPlayableSource;
     setAudioError(hasPlayableSource ? null : 'This queue item has no playable audio source.');
 
     const targetIsYouTube = Boolean(targetTrack.youtubeId && (targetTrack.sourceType === 'youtube' || !targetTrack.audioUrl));
     if (targetIsYouTube) {
       setHasPhysicalAudio(false);
       if (ytPlayerRef.current && typeof ytPlayerRef.current.loadVideoById === 'function') {
-        try { ytPlayerRef.current.loadVideoById(targetTrack.youtubeId); } catch (e) {}
+        try { ytPlayerRef.current.loadVideoById(targetTrack.youtubeId, 0); } catch (e) {}
       }
     } else if (targetTrack.audioUrl) {
       setHasPhysicalAudio(true);
@@ -1409,8 +1707,10 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         audioRef.current.src = targetTrack.audioUrl;
         audioRef.current.currentTime = 0;
         audioRef.current.play().catch(() => {
-          setAudioError('This browser could not play the selected audio file. Try another format.');
+          setAudioPlaybackBlocked(true);
+          setAudioError('Playback in this tab needs a tap. Press play to join the room.');
           setIsPlaying(false);
+          isPlayingRef.current = false;
         });
       }
     } else {
@@ -1429,26 +1729,46 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   tabActionsRef.current = { seekTo, selectTrack, skipTrack };
 
-  const setVolume = (v: number) => {
-    const clamped = Math.max(0, Math.min(100, v));
+  const setVolume = useCallback((v: number) => {
+    const clamped = Math.max(0, Math.min(100, Math.round(v)));
     setVolumeState(clamped);
-    if (clamped > 0) setIsMuted(false);
+    volumeRef.current = clamped;
+    try {
+      localStorage.setItem('nocturne_volume', String(clamped));
+    } catch (e) {}
+
+    if (clamped > 0) {
+      setIsMuted(false);
+      isMutedRef.current = false;
+      try {
+        localStorage.setItem('nocturne_muted', 'false');
+      } catch (e) {}
+    }
 
     if (audioRef.current) {
       audioRef.current.volume = clamped / 100;
-      audioRef.current.muted = false;
+      audioRef.current.muted = clamped === 0;
     }
     if (ytPlayerRef.current && typeof ytPlayerRef.current.setVolume === 'function') {
       try {
         ytPlayerRef.current.setVolume(clamped);
-        ytPlayerRef.current.unMute();
+        if (clamped > 0 && typeof ytPlayerRef.current.unMute === 'function') {
+          ytPlayerRef.current.unMute();
+        } else if (clamped === 0 && typeof ytPlayerRef.current.mute === 'function') {
+          ytPlayerRef.current.mute();
+        }
       } catch (e) {}
     }
-  };
+  }, []);
 
-  const toggleMute = () => {
+  const toggleMute = useCallback(() => {
     setIsMuted((prev) => {
       const next = !prev;
+      isMutedRef.current = next;
+      try {
+        localStorage.setItem('nocturne_muted', String(next));
+      } catch (e) {}
+
       if (audioRef.current) {
         audioRef.current.muted = next;
       }
@@ -1458,12 +1778,15 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             ytPlayerRef.current.mute();
           } else if (!next && typeof ytPlayerRef.current.unMute === 'function') {
             ytPlayerRef.current.unMute();
+            if (typeof ytPlayerRef.current.setVolume === 'function') {
+              ytPlayerRef.current.setVolume(volumeRef.current);
+            }
           }
         } catch (e) {}
       }
       return next;
     });
-  };
+  }, []);
 
   const voteSkip = async (trackId: string) => {
     const track = queueRef.current.find((t) => t.id === trackId);
@@ -1534,7 +1857,7 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user?.id || !activeUserId) {
         setAudioError('You must have an active session to add tracks to the shared queue.');
-        return;
+        return false;
       }
 
       const newTrackId = trackPartial.id || `tr-${Date.now()}`;
@@ -1563,7 +1886,7 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (insertError) {
         console.warn('[NOCTURNE Queue] Failed to queue track in database:', insertError.message);
         setAudioError('Failed to queue track: ' + insertError.message);
-        return;
+        return false;
       }
 
       const newTrack: Track = {
@@ -1590,8 +1913,14 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       };
 
       const updatedQueue = [...queueRef.current, newTrack];
+      queueRef.current = updatedQueue;
       setQueue(updatedQueue);
       sendChatMessage(`Queued ${inferredSource === 'youtube' ? 'YouTube stream' : 'track'}: "${newTrack.title}"`);
+
+      // If queue was empty or nothing playing, immediately play the new track
+      if (!currentTrackRef.current || queueRef.current.length === 1) {
+        selectTrack(newTrack.id, true);
+      }
 
       if (realtimeChannelRef.current) {
         realtimeChannelRef.current
@@ -1606,7 +1935,7 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           })
           .catch(() => {});
       }
-      return;
+      return true;
     }
 
     const newTrack: Track = {
@@ -1632,13 +1961,19 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       skipVotes: 0,
     };
 
-    setQueue((prev) => [...prev, newTrack]);
+    const updatedQueue = [...queueRef.current, newTrack];
+    queueRef.current = updatedQueue;
+    setQueue(updatedQueue);
+    if (!currentTrackRef.current || queueRef.current.length === 1) {
+      selectTrack(newTrack.id, true);
+    }
     if (newTrack.isLocalFile || newTrack.audioUrl?.startsWith('blob:')) {
       // Browser-local audio stays in this tab and is never sent to room chat or APIs.
-      return;
+      return true;
     }
     sendChatMessage(`Queued ${inferredSource === 'youtube' ? 'YouTube stream' : 'track'}: "${newTrack.title}"`);
     dispatchServerAction({ type: 'QUEUE_ADD', track: newTrack });
+    return true;
   };
 
   const loadLocalAudioFiles = async (files: FileList | File[]) => {
@@ -1950,7 +2285,24 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
 
       const updatedQueue = queueRef.current.filter((t) => t.id !== trackId);
+      queueRef.current = updatedQueue;
       setQueue(updatedQueue);
+
+      if (toRemove.id === currentTrackRef.current?.id) {
+        if (updatedQueue.length === 0) {
+          setCurrentTrackIndex(0);
+          currentTrackIndexRef.current = 0;
+          currentTrackRef.current = null;
+          setIsPlaying(false);
+          isPlayingRef.current = false;
+          setProgressSeconds(0);
+        } else {
+          const nextIdx = currentTrackIndexRef.current >= updatedQueue.length ? 0 : currentTrackIndexRef.current;
+          setCurrentTrackIndex(nextIdx);
+          currentTrackIndexRef.current = nextIdx;
+          selectTrack(updatedQueue[nextIdx].id, true);
+        }
+      }
 
       if (realtimeChannelRef.current) {
         realtimeChannelRef.current
@@ -1977,7 +2329,23 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           objectUrlsRef.current.delete(toRemove.audioUrl);
         } catch (e) {}
       }
-      return prev.filter((t) => t.id !== trackId);
+      const nextQ = prev.filter((t) => t.id !== trackId);
+      queueRef.current = nextQ;
+      if (toRemove?.id === currentTrackRef.current?.id) {
+        if (nextQ.length === 0) {
+          setCurrentTrackIndex(0);
+          currentTrackIndexRef.current = 0;
+          currentTrackRef.current = null;
+          setIsPlaying(false);
+          isPlayingRef.current = false;
+        } else {
+          const nextIdx = currentTrackIndexRef.current >= nextQ.length ? 0 : currentTrackIndexRef.current;
+          setCurrentTrackIndex(nextIdx);
+          currentTrackIndexRef.current = nextIdx;
+          selectTrack(nextQ[nextIdx].id, true);
+        }
+      }
+      return nextQ;
     });
     if (!isBrowserLocalTrack(toRemove)) {
       dispatchServerAction({ type: 'QUEUE_REMOVE', trackId });
@@ -2097,43 +2465,53 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const controller = new AbortController();
       roomLoadAbortRef.current = controller;
 
-      // Clear every room-scoped value before requesting the next room. Never leave
-      // the previous room visible while a shared link is loading or failing.
-      setRoomLoadState('loading');
-      currentTrackRef.current = null;
-      currentRoomRef.current = EMPTY_ROOM;
-      queueRef.current = [];
-      currentTrackIndexRef.current = 0;
-      isPlayingRef.current = false;
-      pendingSharedSeekRef.current = null;
-      setCurrentRoom(EMPTY_ROOM);
-      setQueue([]);
-      setCurrentTrackIndex(0);
-      setIsPlaying(false);
-      setProgressSeconds(0);
-      setPhysicalDuration(null);
-      setMembers([]);
-      setChatMessages([]);
-      setReactions([]);
-      setAudioError(null);
-      setAudioPlaybackBlocked(false);
-      setYouTubePlaybackBlocked(false);
-      setSharingTrackId(null);
-      playbackRevisionRef.current = 0;
-      lastReceivedRevisionRef.current = 0;
-      lastReceivedTimestampRef.current = 0;
-      seenEventIdsRef.current.clear();
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.removeAttribute('src');
-        audioRef.current.load();
+      // Check if this room is already the active room (e.g. immediately after createRoom)
+      const isAlreadyActive = Boolean(
+        currentRoomRef.current &&
+        currentRoomRef.current.id &&
+        (currentRoomRef.current.slug === slugOrId ||
+         currentRoomRef.current.id === slugOrId ||
+         currentRoomRef.current.id === `room-${slugOrId}`)
+      );
+
+      // Only wipe room state if navigating to a completely different room
+      if (!isAlreadyActive) {
+        setRoomLoadState('loading');
+        currentTrackRef.current = null;
+        currentRoomRef.current = EMPTY_ROOM;
+        queueRef.current = [];
+        currentTrackIndexRef.current = 0;
+        isPlayingRef.current = false;
+        pendingSharedSeekRef.current = null;
+        setCurrentRoom(EMPTY_ROOM);
+        setQueue([]);
+        setCurrentTrackIndex(0);
+        setIsPlaying(false);
+        setProgressSeconds(0);
+        setPhysicalDuration(null);
+        setMembers([]);
+        setChatMessages([]);
+        setReactions([]);
+        setAudioError(null);
+        setAudioPlaybackBlocked(false);
+        setYouTubePlaybackBlocked(false);
+        setSharingTrackId(null);
+        playbackRevisionRef.current = 0;
+        lastReceivedRevisionRef.current = 0;
+        lastReceivedTimestampRef.current = 0;
+        seenEventIdsRef.current.clear();
+        if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current.removeAttribute('src');
+          audioRef.current.load();
+        }
+        try { ytPlayerRef.current?.pauseVideo?.(); } catch (e) {}
+        localFilesRef.current.clear();
+        objectUrlsRef.current.forEach((url) => {
+          try { URL.revokeObjectURL(url); } catch (e) {}
+        });
+        objectUrlsRef.current.clear();
       }
-      try { ytPlayerRef.current?.pauseVideo?.(); } catch (e) {}
-      localFilesRef.current.clear();
-      objectUrlsRef.current.forEach((url) => {
-        try { URL.revokeObjectURL(url); } catch (e) {}
-      });
-      objectUrlsRef.current.clear();
 
       try {
         const requestHeaders: Record<string, string> = {};
@@ -2174,9 +2552,18 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const selectedIndex = nextIndex >= 0 ? nextIndex : 0;
         setCurrentTrackIndex(selectedIndex);
         currentTrackIndexRef.current = selectedIndex;
-        setIsPlaying(Boolean(data.playback.isPlaying && nextQueue.length > 0));
-        isPlayingRef.current = Boolean(data.playback.isPlaying && nextQueue.length > 0);
-        setProgressSeconds(nextIndex >= 0 && Number.isFinite(data.playback.progressSeconds) ? Math.max(0, data.playback.progressSeconds) : 0);
+        const isPlayingNow = Boolean(data.playback.isPlaying && nextQueue.length > 0);
+        setIsPlaying(isPlayingNow);
+        isPlayingRef.current = isPlayingNow;
+
+        let initialProgress = nextIndex >= 0 && Number.isFinite(data.playback.progressSeconds) ? Math.max(0, data.playback.progressSeconds) : 0;
+        const lastTimestamp = data.playback.lastUpdatedTimestamp || (data.playback.updatedAt ? new Date(data.playback.updatedAt).getTime() : 0);
+        if (isPlayingNow && lastTimestamp > 0) {
+          const elapsed = Math.max(0, (Date.now() - lastTimestamp) / 1000);
+          initialProgress = Math.floor(initialProgress + elapsed);
+        }
+        setProgressSeconds(initialProgress);
+        progressSecondsRef.current = initialProgress;
         const initialRevision = typeof data.playback.revision === 'number' ? data.playback.revision : 0;
         playbackRevisionRef.current = initialRevision;
         lastReceivedRevisionRef.current = initialRevision;
@@ -2198,7 +2585,11 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       } catch (error) {
         if (controller.signal.aborted || requestId !== roomLoadRequestRef.current) return;
         console.error('Unable to load listening room:', error);
-        setRoomLoadState('error');
+        if (isAlreadyActive && currentRoomRef.current?.id) {
+          setRoomLoadState('ready');
+        } else {
+          setRoomLoadState('error');
+        }
       } finally {
         if (requestId === roomLoadRequestRef.current) roomLoadAbortRef.current = null;
       }
@@ -2253,7 +2644,11 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const reqHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
     if (isSupabaseConfigured()) {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        let { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          await initAnonymousAuth();
+          ({ data: { session } } = await supabase.auth.getSession());
+        }
         if (session?.access_token) {
           reqHeaders['Authorization'] = `Bearer ${session.access_token}`;
         }
@@ -2312,10 +2707,97 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     });
 
     setCurrentRoom(newRoom);
+    currentRoomRef.current = newRoom;
+    setRoomLoadState('ready');
     setCurrentTrackIndex(0);
     setProgressSeconds(0);
     return newRoom;
   };
+
+  const endRoom = useCallback(async (): Promise<boolean> => {
+    const room = currentRoomRef.current;
+    if (!room || !room.id || room.isFeatured) return false;
+    const activeUserId = authUidRef.current || clientId;
+    const isHost = Boolean(room.host?.id && room.host.id === activeUserId);
+    if (!isHost) return false;
+
+    // 1. Broadcast room_ended event to peers
+    if (realtimeChannelRef.current) {
+      try {
+        await realtimeChannelRef.current.send({
+          type: 'broadcast',
+          event: 'room_ended',
+          payload: { roomId: room.id, senderId: activeUserId },
+        });
+      } catch (e) {}
+    }
+
+    // 2. Delete room from Supabase or server API
+    if (isSupabaseConfigured()) {
+      try {
+        const { error } = await supabase.from('rooms').delete().eq('id', room.id);
+        if (error) console.warn('[NOCTURNE Room] Delete error:', error.message);
+      } catch (e) {}
+    } else {
+      try {
+        await fetch(`/api/rooms/${encodeURIComponent(room.id)}/end`, { method: 'POST' });
+      } catch (e) {}
+    }
+
+    // 3. Stop local playback and fully clear room-scoped state
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.removeAttribute('src');
+    }
+    try { ytPlayerRef.current?.pauseVideo?.(); } catch (e) {}
+    setIsPlaying(false);
+    isPlayingRef.current = false;
+    setProgressSeconds(0);
+    progressSecondsRef.current = 0;
+    setPhysicalDuration(null);
+    setQueue([]);
+    queueRef.current = [];
+    setCurrentTrackIndex(-1);
+    currentTrackIndexRef.current = -1;
+    setCurrentRoom(EMPTY_ROOM);
+    currentRoomRef.current = EMPTY_ROOM;
+    setMembers([]);
+    setChatMessages([]);
+    setRoomLoadState('ended');
+    return true;
+  }, [clientId]);
+
+  const leaveRoom = useCallback(async (): Promise<void> => {
+    const room = currentRoomRef.current;
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.removeAttribute('src');
+    }
+    try { ytPlayerRef.current?.pauseVideo?.(); } catch (e) {}
+    setIsPlaying(false);
+    isPlayingRef.current = false;
+    setProgressSeconds(0);
+    progressSecondsRef.current = 0;
+    setPhysicalDuration(null);
+    setQueue([]);
+    queueRef.current = [];
+    setCurrentTrackIndex(-1);
+    currentTrackIndexRef.current = -1;
+    setCurrentRoom(EMPTY_ROOM);
+    currentRoomRef.current = EMPTY_ROOM;
+    setMembers([]);
+    setChatMessages([]);
+    setRoomLoadState('ready');
+
+    if (room?.id && authUidRef.current && isSupabaseConfigured()) {
+      try {
+        await supabase.rpc('leave_room_membership', {
+          p_room_id: room.id,
+          p_user_id: authUidRef.current,
+        });
+      } catch (e) {}
+    }
+  }, []);
 
   // Global Media Keyboard Controls (Space, Left/Right, Up/Down, M)
   useEffect(() => {
@@ -2372,6 +2854,9 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         reactions,
         isSearchOpen,
         isCreateRoomOpen,
+        theme,
+        setTheme,
+        toggleTheme,
         hasPhysicalAudio,
         isYouTubeActive,
         youtubePlaybackBlocked,
@@ -2382,6 +2867,7 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         shareLocalAudioFile,
         sharingTrackId,
         registerYouTubePlayer,
+        registerYouTubeDuration,
         syncYouTubePlaybackState,
         setQuality,
         togglePlay,
@@ -2401,6 +2887,8 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         resolveAndSetRoom,
         setIsSearchOpen,
         setIsCreateRoomOpen,
+        leaveRoom,
+        endRoom,
       }}
     >
       {children}

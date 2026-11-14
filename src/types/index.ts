@@ -53,6 +53,7 @@ export interface Room {
   host: UserProfile;
   listenerCount: number;
   isPrivate: boolean;
+  isFeatured?: boolean;
   mode: 'collaborative' | 'host-curated';
   currentTrackId: string;
   artworkId?: 'noc-01' | 'noc-02' | 'noc-03';

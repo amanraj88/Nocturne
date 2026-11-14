@@ -2,7 +2,7 @@
  * NOCTURNE Persistent Room & Realtime State Store
  * Single-process room state for local and single-node hosting; multi-instance deployment needs shared storage.
  */
-import { Room, Track, UserProfile, ChatMessage, ReactionBurst } from '@/types';
+import type { Room, Track, UserProfile, ChatMessage, ReactionBurst } from '@/types';
 import { FEATURED_ROOMS, INITIAL_TRACKS, INITIAL_CHAT } from '@/lib/mockData';
 
 const LEGACY_DEMO_TRACK_IDS = new Set(['tr-1', 'tr-2', 'tr-3', 'tr-4', 'tr-5', 'tr-fixture-tone']);
@@ -28,6 +28,7 @@ export interface RoomPlaybackState {
   isPlaying: boolean;
   progressSeconds: number;
   lastUpdatedTimestamp: number;
+  updatedAt?: string;
   sourceType: 'youtube' | 'shared-audio' | 'local' | 'fixture' | 'specimen';
   localFileName?: string;
 }
@@ -181,6 +182,9 @@ class RoomManager extends EventEmitter {
         }
       });
     }, 10000);
+    if (this.pruneInterval && typeof this.pruneInterval.unref === 'function') {
+      this.pruneInterval.unref();
+    }
   }
 
   public getAllRooms(): Room[] {
@@ -207,6 +211,32 @@ class RoomManager extends EventEmitter {
       }
     }
     return state || null;
+  }
+
+  public isRoomActive(roomIdOrSlug: string): boolean {
+    const state = this.getRoomState(roomIdOrSlug);
+    if (!state) return false;
+    // Featured editorial lounges are permanently protected
+    if (
+      state.room.isFeatured ||
+      state.room.id.startsWith('room-tokyo') ||
+      state.room.id.startsWith('room-nordic') ||
+      state.room.id.startsWith('room-berlin')
+    ) {
+      return true;
+    }
+    // Genuinely active if listeners are present or playback is running
+    return state.participants.size > 0 || Boolean(state.playback?.isPlaying);
+  }
+
+  public getAvailableSlug(baseSlug: string): string {
+    let candidate = baseSlug;
+    let counter = 2;
+    while (this.isRoomActive(candidate)) {
+      candidate = `${baseSlug}-${counter}`;
+      counter++;
+    }
+    return candidate;
   }
 
   public createRoom(roomData: Partial<Room> & { name?: string; tags?: string[] }): Room {
@@ -376,6 +406,16 @@ class RoomManager extends EventEmitter {
       type: 'QUEUE_UPDATE',
       queue: state.queue,
     });
+    this.persistRooms();
+    return true;
+  }
+
+  public deleteRoom(roomId: string): boolean {
+    const state = this.getRoomState(roomId);
+    if (!state) return false;
+    this.rooms.delete(state.room.id);
+    this.rooms.delete(state.room.slug);
+    this.emitRoomUpdate(state.room.id, { type: 'ROOM_ENDED' });
     this.persistRooms();
     return true;
   }

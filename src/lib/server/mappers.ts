@@ -5,6 +5,11 @@ import { RoomPlaybackState } from './rooms';
  * Transforms a Supabase PostgreSQL rooms row into a NOCTURNE Room object.
  */
 export function mapDbRoomToRoom(row: any, listenerCount = 0): Room {
+  const isEditorial =
+    ['tokyo-afterhours', 'ambient-drift', 'cyber-lounge'].includes(row.slug) ||
+    ['room-tokyo-afterhours', 'room-ambient-drift', 'room-cyber-lounge'].includes(row.id) ||
+    Boolean(row.is_featured);
+
   return {
     id: row.id,
     slug: row.slug,
@@ -16,6 +21,7 @@ export function mapDbRoomToRoom(row: any, listenerCount = 0): Room {
     accentColor: row.accent_color || '#A0B7A8',
     mode: 'collaborative',
     isPrivate: Boolean(row.is_private),
+    isFeatured: isEditorial,
     listenerCount,
     currentTrackId: '',
     host: {
@@ -74,6 +80,7 @@ export function mapDbPlaybackToPlayback(row: any): RoomPlaybackState {
     isPlaying: Boolean(row.is_playing),
     progressSeconds: Number(row.progress_seconds) || 0,
     lastUpdatedTimestamp: updatedAtMs,
+    updatedAt: row.updated_at || new Date().toISOString(),
     sourceType: row.source_type || 'specimen',
   };
 }
