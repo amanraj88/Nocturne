@@ -21,6 +21,10 @@ interface LoungeContextType {
   reactions: ReactionBurst[];
   isSearchOpen: boolean;
   isCreateRoomOpen: boolean;
+  lastVisitedRoom: { id: string; slug: string; title: string; artworkUrl?: string | null } | null;
+  clientId: string;
+  clientName: string;
+  setClientName: (name: string) => void;
   theme: 'dark' | 'light';
   setTheme: (t: 'dark' | 'light') => void;
   toggleTheme: () => void;
@@ -93,7 +97,13 @@ const EMPTY_ROOM: Room = {
 export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Persistent anonymous client identity for room participation (deterministic SSR defaults)
   const [clientId, setClientId] = useState<string>('usr-guest');
-  const [clientName, setClientName] = useState<string>('Listener 101');
+  const [clientName, setClientName] = useState<string>('Midnight Owl');
+  const [lastVisitedRoom, setLastVisitedRoom] = useState<{
+    id: string;
+    slug: string;
+    title: string;
+    artworkUrl?: string | null;
+  } | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -105,12 +115,30 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
       setClientId(id);
 
+      const NOCTURNAL_NAMES = [
+        'Midnight Owl',
+        'Velvet Static',
+        'Neon Drifter',
+        'Quiet Satellite',
+        'Lunar Echo',
+        'Subtle Vinyl',
+        'Amber Synth',
+        'Obsidian Wave',
+      ];
       let name = sessionStorage.getItem('nocturne_client_name');
       if (!name) {
-        name = 'Listener ' + Math.floor(100 + Math.random() * 900);
+        name = NOCTURNAL_NAMES[Math.floor(Math.random() * NOCTURNAL_NAMES.length)];
         sessionStorage.setItem('nocturne_client_name', name);
       }
       setClientName(name);
+
+      const storedRoom = sessionStorage.getItem('nocturne_last_room');
+      if (storedRoom) {
+        const parsed = JSON.parse(storedRoom);
+        if (parsed && parsed.slug && parsed.title) {
+          setLastVisitedRoom(parsed);
+        }
+      }
     } catch (e) {}
   }, []);
 
@@ -138,17 +166,18 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
   }, []);
 
-  // User identity state for Supabase anonymous authentication
-  const [authUid, setAuthUid] = useState<string | null>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        return sessionStorage.getItem('nocturne_auth_uid');
-      } catch (e) {}
-    }
-    return null;
-  });
+  // User identity state for Supabase anonymous authentication (deterministic SSR default)
+  const [authUid, setAuthUid] = useState<string | null>(null);
   const authUidRef = useRef<string | null>(authUid);
   authUidRef.current = authUid;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const stored = sessionStorage.getItem('nocturne_auth_uid');
+      if (stored) setAuthUid(stored);
+    } catch (e) {}
+  }, []);
 
   // Initialize Supabase anonymous authentication session if configured
   useEffect(() => {
@@ -2534,6 +2563,10 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         if (requestId !== roomLoadRequestRef.current) return;
         if (response.status === 404) {
           setRoomLoadState('not-found');
+          setLastVisitedRoom(null);
+          try {
+            sessionStorage.removeItem('nocturne_last_room');
+          } catch (e) {}
           return;
         }
         if (!response.ok) throw new Error(`Room request failed (${response.status}).`);
@@ -2582,6 +2615,18 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           pendingSharedSeekRef.current = Math.max(0, data.playback.progressSeconds);
         }
         setRoomLoadState('ready');
+        if (data.room?.id && data.room?.slug && data.room?.title) {
+          const visited = {
+            id: data.room.id,
+            slug: data.room.slug,
+            title: data.room.title,
+            artworkUrl: data.room.artworkUrl || null,
+          };
+          setLastVisitedRoom(visited);
+          try {
+            sessionStorage.setItem('nocturne_last_room', JSON.stringify(visited));
+          } catch (e) {}
+        }
       } catch (error) {
         if (controller.signal.aborted || requestId !== roomLoadRequestRef.current) return;
         console.error('Unable to load listening room:', error);
@@ -2709,6 +2754,18 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setCurrentRoom(newRoom);
     currentRoomRef.current = newRoom;
     setRoomLoadState('ready');
+    const visited = {
+      id: newRoom.id,
+      slug: newRoom.slug,
+      title: newRoom.title,
+      artworkUrl: newRoom.artworkUrl || null,
+    };
+    setLastVisitedRoom(visited);
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.setItem('nocturne_last_room', JSON.stringify(visited));
+      } catch {}
+    }
     setCurrentTrackIndex(0);
     setProgressSeconds(0);
     return newRoom;
@@ -2764,8 +2821,25 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setMembers([]);
     setChatMessages([]);
     setRoomLoadState('ended');
+    setLastVisitedRoom(null);
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.removeItem('nocturne_last_room');
+      } catch {}
+    }
     return true;
   }, [clientId]);
+
+  const updateClientName = useCallback((name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    setClientName(trimmed);
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.setItem('nocturne_client_name', trimmed);
+      } catch (e) {}
+    }
+  }, []);
 
   const leaveRoom = useCallback(async (): Promise<void> => {
     const room = currentRoomRef.current;
@@ -2854,6 +2928,10 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         reactions,
         isSearchOpen,
         isCreateRoomOpen,
+        lastVisitedRoom,
+        clientId,
+        clientName,
+        setClientName: updateClientName,
         theme,
         setTheme,
         toggleTheme,

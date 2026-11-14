@@ -11,33 +11,48 @@ html.dark,
 [data-theme='dark'] {
   color-scheme: dark;
 
+  /* Stitch MCP Hardware Design System Tokens */
+  --bg-canvas: #09090D;
+  --bg-panel: #121218;
+  --bg-recessed: #0B0B0F;
+  --bg-elevated: #181820;
+  --bg-thumb: #1E1B2E;
+  --border-subtle: rgba(255, 255, 255, 0.07);
+  --border-strong: rgba(255, 255, 255, 0.12);
+  --text-primary: #F4F4F6;
+  --text-muted: #9CA3AF;
+  --accent-coral: #F43F5E;
+  --accent-coral-hover: #E11D48;
+  --accent-violet: #8B5CF6;
+  --accent-emerald: #10B981;
+
   /* Surfaces & Backgrounds */
-  --color-deep-ink: #0F0E17;
-  --color-carbon: #1A1829;
-  --color-graphite: #2D2945;
-  --color-graphite-subtle: #242138;
+  --color-deep-ink: #09090D;
+  --color-carbon: #121218;
+  --color-graphite: rgba(255, 255, 255, 0.07);
+  --color-graphite-subtle: #0B0B0F;
 
   /* Typographic Ink */
-  --color-warm-bone: #FFFFFF;
-  --color-ash: #A19EB5;
-  --color-ash-dim: #6B6785;
+  --color-warm-bone: #F4F4F6;
+  --color-ash: #9CA3AF;
+  --color-ash-dim: #6B7280;
 
   /* Direction B Brand Accents */
   --color-mineral: #8B5CF6;
   --color-mineral-subtle: rgba(139, 92, 246, 0.15);
   --color-mineral-glow: rgba(139, 92, 246, 0.35);
 
-  --color-oxide: #FF5C8A;
-  --color-oxide-subtle: rgba(255, 92, 138, 0.15);
+  --color-oxide: #F43F5E;
+  --color-oxide-subtle: rgba(244, 63, 94, 0.15);
 
   /* Genuine Telemetry / System States */
   --color-sync: #38BDF8;
-  --color-live: #4ADE80;
-  --color-alert: #FF5C8A;
+  --color-live: #10B981;
+  --color-alert: #F43F5E;
 
   /* Hairlines and Focus */
   --border-hairline: rgba(139, 92, 246, 0.2);
-  --border-graphite: #2D2945;
+  --border-graphite: rgba(255, 255, 255, 0.07);
   --border-focus: #8B5CF6;
 
   /* Backward-Compatible Aliases */
@@ -50,22 +65,37 @@ html.dark,
   --color-lavender-subtle: var(--color-mineral-subtle);
   --color-coral: var(--color-oxide);
   --color-coral-subtle: var(--color-oxide-subtle);
-  --color-green: #4ADE80;
+  --color-green: #10B981;
 }
 
 html.light,
 [data-theme='light'] {
   color-scheme: light;
 
-  /* Light Theme Surfaces & Backgrounds (Google Stitch Tokens) */
-  --color-deep-ink: #F8F7FC;
+  /* Stitch MCP Hardware Design System Tokens (Light Spec) */
+  --bg-canvas: #F6F5F8;
+  --bg-panel: #FFFFFF;
+  --bg-recessed: #ECEAF2;
+  --bg-elevated: #F0EEF6;
+  --bg-thumb: #FFFFFF;
+  --border-subtle: #E4E4EB;
+  --border-strong: #D1D1DB;
+  --text-primary: #111115;
+  --text-muted: #646470;
+  --accent-coral: #F43F5E;
+  --accent-coral-hover: #E11D48;
+  --accent-violet: #7C3AED;
+  --accent-emerald: #10B981;
+
+  /* Light Theme Surfaces & Backgrounds */
+  --color-deep-ink: #F6F5F8;
   --color-carbon: #FFFFFF;
-  --color-graphite: #EDEAF5;
-  --color-graphite-subtle: #F3F0FA;
+  --color-graphite: #E4E4EB;
+  --color-graphite-subtle: #ECEAF2;
 
   /* Light Theme Typographic Ink */
-  --color-warm-bone: #12101F;
-  --color-ash: #5E5873;
+  --color-warm-bone: #111115;
+  --color-ash: #646470;
   --color-ash-dim: #8A879E;
 
   /* Direction B Brand Accents */
@@ -78,12 +108,12 @@ html.light,
 
   /* Genuine Telemetry / System States */
   --color-sync: #0284C7;
-  --color-live: #16A34A;
+  --color-live: #10B981;
   --color-alert: #E11D48;
 
   /* Hairlines and Focus */
   --border-hairline: rgba(124, 58, 237, 0.15);
-  --border-graphite: #EDEAF5;
+  --border-graphite: #E4E4EB;
   --border-focus: #7C3AED;
 
   /* Backward-Compatible Aliases */
@@ -96,7 +126,7 @@ html.light,
   --color-lavender-subtle: var(--color-mineral-subtle);
   --color-coral: var(--color-oxide);
   --color-coral-subtle: var(--color-oxide-subtle);
-  --color-green: #16A34A;
+  --color-green: #10B981;
 }
 
 /* Base Viewport & Typography Rules */
@@ -110,8 +140,8 @@ body {
   overflow-x: clip;
   width: 100%;
   max-width: 100vw;
-  background-color: var(--color-deep-ink);
-  color: var(--color-warm-bone);
+  background-color: var(--bg-canvas);
+  color: var(--text-primary);
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   letter-spacing: -0.01em;
   -webkit-font-smoothing: antialiased;
@@ -122,14 +152,14 @@ body {
 /* Light Mode Overrides for Direction B v3 Stitch Tokens */
 html.light,
 [data-theme='light'] {
-  background-color: #F8F7FC;
-  color: #12101F;
+  background-color: var(--bg-canvas);
+  color: var(--text-primary);
 }
 
 html.light body,
 [data-theme='light'] body {
-  background-color: #F8F7FC;
-  color: #12101F;
+  background-color: var(--bg-canvas);
+  color: var(--text-primary);
 }
 
 /* Background surfaces */

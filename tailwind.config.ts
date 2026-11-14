@@ -70,11 +70,13 @@ const config: Config = {
         },
       },
       fontFamily: {
+        syne: ['Syne', 'sans-serif'],
+        inter: ['Inter', 'sans-serif'],
         headline: ['Plus Jakarta Sans', 'sans-serif'],
         display: ['Plus Jakarta Sans', 'Syne', 'sans-serif'],
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
         body: ['Inter', 'system-ui', 'sans-serif'],
-        mono: ['JetBrains Mono', 'monospace'],
+        mono: ['"JetBrains Mono"', 'JetBrains Mono', 'monospace'],
         serif: ['Plus Jakarta Sans', 'sans-serif'],
       },
       boxShadow: {

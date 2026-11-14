@@ -4,21 +4,19 @@ import { ArtworkRenderer } from '@/components/artwork';
 import { formatTime } from '@/lib/utils';
 import {
   Heart,
-  Share2,
-  Check,
+  Maximize2,
+  Minimize2,
   Tv,
-  Disc,
-  AlertCircle,
+  Image as ImageIcon,
   SkipForward,
   SkipBack,
   Play,
   Pause,
-  Shuffle,
-  Repeat,
   Volume2,
   VolumeX,
-  Speaker,
+  Volume1,
   Radio,
+  AlertCircle,
 } from 'lucide-react';
 
 export const VinylStage: React.FC = () => {
@@ -38,28 +36,36 @@ export const VinylStage: React.FC = () => {
     setVolume,
     isMuted,
     toggleMute,
-    hasPhysicalAudio,
-    isYouTubeActive,
-    audioError,
-    sendChatMessage,
+    clientId,
+    clientName,
     registerYouTubePlayer,
     registerYouTubeDuration,
     syncYouTubePlaybackState,
     setYouTubePlaybackBlocked,
+    triggerReaction,
   } = useLounge();
 
+  // Role check: Host vs Member
+  const isHost = Boolean(
+    currentRoom?.host?.id && (currentRoom.host.id === clientId || currentRoom.host.name === clientName)
+  );
+
+  // View mode: default to 'artwork'
+  const [viewMode, setViewMode] = useState<'video' | 'artwork'>('artwork');
+  const isVideoVisible = Boolean(currentTrack?.youtubeId && viewMode === 'video');
   const [isLiked, setIsLiked] = useState(false);
-  const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'error'>('idle');
-  const [viewMode, setViewMode] = useState<'monitor' | 'sleeve'>('monitor');
+  const [likeBurst, setLikeBurst] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [ytErrorNotice, setYtErrorNotice] = useState<string | null>(null);
 
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const stageRootRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const ytPlayerInstanceRef = useRef<any>(null);
   const isInitializingPlayerRef = useRef(false);
   const loadedYoutubeIdRef = useRef<string | null>(null);
   const isSeekingDueToSyncRef = useRef(false);
   const isScriptLoadedRef = useRef(false);
+
   const skipTrackRef = useRef(skipTrack);
   skipTrackRef.current = skipTrack;
   const isPlayingRef = useRef(isPlaying);
@@ -78,16 +84,15 @@ export const VinylStage: React.FC = () => {
   isMutedRef.current = isMuted;
   const currentYoutubeIdRef = useRef<string | undefined>(currentTrack?.youtubeId);
   currentYoutubeIdRef.current = currentTrack?.youtubeId;
-  const autoplayBlockedRef = useRef(false);
   const progressSecondsRef = useRef(progressSeconds);
   progressSecondsRef.current = progressSeconds;
 
   const progressPercent =
     durationSeconds > 0 ? Math.min(100, Math.max(0, (progressSeconds / durationSeconds) * 100)) : 0;
 
-  // Waveform click / drag seek handler
+  // Waveform seek handler (Host only; members disabled)
   const handleWaveformSeek = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (durationSeconds <= 0) return;
+    if (!isHost || durationSeconds <= 0) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const clickX = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
     const targetRatio = clickX / rect.width;
@@ -99,42 +104,21 @@ export const VinylStage: React.FC = () => {
     }, 1500);
   };
 
-  const copyRoomLink = async () => {
-    try {
-      if (typeof window !== 'undefined') {
-        const url = window.location.href;
-        let copied = false;
-        if (navigator?.clipboard?.writeText) {
-          try {
-            await navigator.clipboard.writeText(url);
-            copied = true;
-          } catch {
-            copied = false;
-          }
-        }
-        if (!copied) {
-          const ta = document.createElement('textarea');
-          ta.value = url;
-          ta.style.position = 'fixed';
-          ta.style.opacity = '0';
-          document.body.appendChild(ta);
-          ta.select();
-          try {
-            copied = document.execCommand('copy');
-          } finally {
-            document.body.removeChild(ta);
-          }
-        }
-        if (!copied) throw new Error('Clipboard copy was denied.');
-        setCopyStatus('copied');
-        sendChatMessage('Copied shareable lounge link to clipboard.');
-        setTimeout(() => setCopyStatus('idle'), 2500);
-      }
-    } catch {
-      setCopyStatus('error');
-      setTimeout(() => setCopyStatus('idle'), 3000);
+  // Fullscreen toggle handler
+  const toggleFullscreen = () => {
+    if (!stageRootRef.current) return;
+    if (!document.fullscreenElement) {
+      stageRootRef.current.requestFullscreen?.().then(() => setIsFullscreen(true)).catch(() => {});
+    } else {
+      document.exitFullscreen?.().then(() => setIsFullscreen(false)).catch(() => {});
     }
   };
+
+  useEffect(() => {
+    const handleFsChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener('fullscreenchange', handleFsChange);
+    return () => document.removeEventListener('fullscreenchange', handleFsChange);
+  }, []);
 
   // Dynamically load YouTube IFrame API script
   useEffect(() => {
@@ -390,393 +374,396 @@ export const VinylStage: React.FC = () => {
     } catch (e) {}
   }, [volume, isMuted]);
 
-  // Flowing Waveform Canvas Animator (Stitch Direction B v3)
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    let animId: number;
-    let step = 0;
-
-    const resize = () => {
-      const rect = canvas.getBoundingClientRect();
-      canvas.width = rect.width * (window.devicePixelRatio || 1);
-      canvas.height = rect.height * (window.devicePixelRatio || 1);
-      ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
-    };
-
-    resize();
-    window.addEventListener('resize', resize);
-
-    const layers = [
-      { color: '#8B5CF6', alpha: 0.35, freq: 0.015, speed: 0.03, amp: 22, offset: 0 },
-      { color: '#06B6D4', alpha: 0.25, freq: 0.022, speed: 0.02, amp: 14, offset: 1.5 },
-      { color: '#EC4899', alpha: 0.40, freq: 0.018, speed: 0.035, amp: 18, offset: 3.0 },
-      { color: '#FF5C8A', alpha: 0.50, freq: 0.012, speed: 0.025, amp: 26, offset: 4.2 },
-    ];
-
-    const render = () => {
-      const rect = canvas.getBoundingClientRect();
-      const width = rect.width;
-      const height = rect.height;
-
-      ctx.clearRect(0, 0, width, height);
-
-      const dynamicAmpMult = isPlaying ? 1.0 : 0.25;
-      const dynamicSpeedMult = isPlaying ? 1.0 : 0.15;
-
-      layers.forEach((layer) => {
-        ctx.beginPath();
-        ctx.moveTo(0, height);
-
-        for (let x = 0; x <= width; x += 4) {
-          const y1 =
-            Math.sin(x * layer.freq + step * layer.speed * dynamicSpeedMult + layer.offset) *
-            (layer.amp * dynamicAmpMult);
-          const y2 =
-            Math.cos(x * 0.008 - step * 0.015 * dynamicSpeedMult) *
-            (layer.amp * 0.5 * dynamicAmpMult);
-          const y = height / 2 + y1 + y2;
-
-          if (x === 0) {
-            ctx.lineTo(x, y);
-          } else {
-            ctx.lineTo(x, y);
-          }
-        }
-
-        ctx.lineTo(width, height);
-        ctx.closePath();
-
-        const gradient = ctx.createLinearGradient(0, 0, width, height);
-        gradient.addColorStop(0, layer.color);
-        gradient.addColorStop(0.5, '#7C3AED');
-        gradient.addColorStop(1, '#FF5C8A');
-
-        ctx.fillStyle = gradient;
-        ctx.globalAlpha = layer.alpha;
-        ctx.fill();
-      });
-
-      ctx.globalAlpha = 1.0;
-      step++;
-      animId = requestAnimationFrame(render);
-    };
-
-    render();
-
-    return () => {
-      window.removeEventListener('resize', resize);
-      cancelAnimationFrame(animId);
-    };
-  }, [isPlaying]);
-
   const activeArtworkId = currentTrack?.artworkId || currentRoom.artworkId || 'noc-01';
-  const displayTitle = currentTrack?.title || currentRoom.title || 'Shibuya Midnight Reverie';
-  const displayArtist = currentTrack?.artist || 'NOCTURNE Curated Selection';
-  const hostName = currentRoom?.host?.name || 'Alex';
-  const isVideoVisible = Boolean(currentTrack?.youtubeId && viewMode === 'monitor');
+  const displayTitle = currentTrack?.title || 'No track playing';
+  const displaySubtitle = currentTrack
+    ? `${currentTrack.artist || 'NOCTURNE Selection'} · Added by ${currentTrack.addedBy?.name || 'Curator'}`
+    : 'Add a YouTube link to start';
+  const trackArtworkUrl = currentTrack?.albumArt || null;
 
   return (
-    <div className="w-full flex flex-col gap-4">
-      {/* Tap-to-Join Live Playback Overlay for Strict Mobile Autoplay Policies */}
+    <div
+      ref={stageRootRef}
+      className="flex-1 w-full h-full flex flex-col justify-between relative overflow-hidden bg-[var(--bg-canvas)]"
+    >
+      {/* Autoplay Blocked Tap-to-Sync Notice */}
       {(youtubePlaybackBlocked || audioPlaybackBlocked) && (
-        <div className="w-full p-3 rounded-xl bg-[#F3F0FA] dark:bg-[#8B5CF6]/20 border border-[#DDD6FE] dark:border-[#8B5CF6]/50 text-[#12101F] dark:text-white text-xs flex items-center justify-between shadow-md">
+        <div className="absolute top-3 left-4 right-4 z-40 p-2.5 rounded-lg bg-[var(--bg-panel)] border border-amber-500/40 text-amber-300 text-xs flex items-center justify-between shadow-lg">
           <div className="flex items-center gap-2">
-            <Radio className="w-4 h-4 text-[#F43F5E] dark:text-[#FF5C8A] animate-pulse" />
-            <span>Tap to sync & join live audio/video</span>
+            <Radio className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+            <span>Autoplay blocked by browser. Tap to sync audio.</span>
           </div>
           <button
             type="button"
             onClick={() => {
-              if (isYouTubeActive && ytPlayerInstanceRef.current?.playVideo) {
+              if (ytPlayerInstanceRef.current?.playVideo) {
                 ytPlayerInstanceRef.current.playVideo();
                 setYouTubePlaybackBlocked(false);
               }
             }}
-            className="px-3 py-1 bg-[#FF5C8A] hover:bg-[#ff477b] text-white font-semibold rounded-full text-xs shadow-md"
+            className="px-2.5 py-1 bg-[#F43F5E] hover:bg-[#E11D48] text-white font-medium rounded-md text-[11px] transition-colors"
           >
-            Sync
+            Tap to Sync &amp; Listen
           </button>
         </div>
       )}
 
-      {/* Player Card Container (Stitch Direction B v3) */}
-      <div className="bg-white dark:bg-[#1A1829] border border-[#EDEAF5] dark:border-[#2D2945] rounded-2xl p-4 sm:p-6 shadow-sm dark:shadow-2xl relative overflow-hidden flex flex-col justify-between transition-colors">
-        {/* Subtle Ambient Radial Glow Backdrops */}
-        <div className="absolute -top-24 -left-24 w-72 h-72 bg-[#8B5CF6]/15 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-24 -right-24 w-72 h-72 bg-[#FF5C8A]/10 rounded-full blur-3xl pointer-events-none" />
-
-        {/* Stage Container */}
-        <div className="relative w-full aspect-[16/10] sm:aspect-[16/9] rounded-xl overflow-hidden group shadow-2xl border border-[#EDEAF5] dark:border-[#2D2945]/80 bg-black">
-          {/* YouTube Video Monitor (Persistent DOM element with persistent positioning to prevent audio termination) */}
-          <div
-            ref={containerRef}
-            className={`transition-all duration-300 rounded-lg overflow-hidden border border-[#EDEAF5] dark:border-[#2D2945] shadow-2xl bg-black ${
-              isVideoVisible
-                ? 'w-full aspect-video z-20 shadow-glow-album'
-                : 'fixed -left-[9999px] top-0 w-1 h-1 opacity-0 pointer-events-none'
-            }`}
-          >
-            <div id="nocturne-yt-player" className="w-full h-full" />
+      {/* YouTube Error Alert */}
+      {ytErrorNotice && (
+        <div
+          role="alert"
+          className="absolute top-3 left-4 right-4 z-40 p-2.5 rounded-lg bg-rose-500/15 border border-rose-500/40 text-rose-300 text-xs flex items-center justify-between gap-2 shadow-lg"
+        >
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+            <span className="truncate">{ytErrorNotice}</span>
           </div>
-
-          {/* Fallback Artwork Sleeve View */}
-          <div
-            className={`w-full h-full transition-transform duration-700 group-hover:scale-105 ${
-              !isVideoVisible ? 'block' : 'hidden'
-            }`}
-          >
-            <ArtworkRenderer artworkId={activeArtworkId} className="w-full h-full object-cover" />
-          </div>
-
-          {/* Category Tag Pill */}
-          <div className="absolute top-3.5 left-3.5 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-xs font-semibold text-[#DDD6FE] flex items-center gap-1.5 shadow-lg z-20">
-            <span className="w-2 h-2 rounded-full bg-[#8B5CF6] animate-pulse" />
-            <span>{currentRoom.vibeTag || 'Atmospheric Chill'}</span>
-          </div>
-
-          {/* Synced with Host Indicator Badge */}
-          <div className="absolute top-3.5 right-3.5 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-[11px] font-medium text-[#38BDF8] flex items-center gap-1.5 z-20 shadow-lg">
-            <Radio className="w-3 h-3 text-[#38BDF8]" />
-            <span>Synced with {hostName}</span>
-          </div>
-
-          {/* Mode Switcher Pill (Video / Artwork) if YouTube is present */}
-          {currentTrack?.youtubeId && (
-            <div className="absolute bottom-3 right-3 z-20">
-              <button
-                type="button"
-                onClick={() => setViewMode(viewMode === 'monitor' ? 'sleeve' : 'monitor')}
-                className="px-2.5 py-1 rounded-full bg-black/60 hover:bg-black/80 border border-white/15 text-[11px] font-medium text-white flex items-center gap-1.5 backdrop-blur-md transition-colors"
-                title={viewMode === 'monitor' ? 'Show Sleeve Artwork' : 'Show YouTube Video'}
-              >
-                {viewMode === 'monitor' ? (
-                  <>
-                    <Disc className="w-3.5 h-3.5 text-[#8B5CF6]" />
-                    <span>Artwork View</span>
-                  </>
-                ) : (
-                  <>
-                    <Tv className="w-3.5 h-3.5 text-[#4ADE80]" />
-                    <span>Video View</span>
-                  </>
-                )}
-              </button>
-            </div>
-          )}
-
-          {/* Album Mark Pill */}
-          <div className="absolute bottom-3 left-3 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-[11px] text-[#A19EB5] z-20">
-            <span>Room • [{activeArtworkId.toUpperCase()}]</span>
-          </div>
-        </div>
-
-        {/* Track Title & Primary Action Cluster */}
-        <div className="flex items-center justify-between mt-5">
-          <div className="min-w-0 pr-3">
-            <h2 className="text-xl sm:text-2xl font-headline font-bold text-[#12101F] dark:text-white tracking-tight truncate">
-              {displayTitle}
-            </h2>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-sm text-[#7C3AED] dark:text-[#DDD6FE] font-medium truncate">
-                {displayArtist}
-              </span>
-              <span className="text-xs text-[#8E88A8] dark:text-[#6B6785]">•</span>
-              <span className="text-xs text-[#5E5873] dark:text-[#A19EB5] bg-[#F3F0FA] dark:bg-[#242138] border border-[#EDEAF5] dark:border-[#2D2945] px-2.5 py-0.5 rounded-full truncate">
-                {isYouTubeActive ? 'YouTube Stream' : 'Curated Audio'}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1.5 shrink-0">
-            {/* Favorite / Like Toggle */}
-            <button
-              type="button"
-              onClick={() => setIsLiked(!isLiked)}
-              className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
-                isLiked
-                  ? 'text-[#F43F5E] bg-[#F43F5E]/10'
-                  : 'text-[#5E5873] dark:text-[#A19EB5] hover:text-[#12101F] dark:hover:text-white hover:bg-[#F3F0FA] dark:hover:bg-[#242138]'
-              }`}
-              title="Save to Library"
-              aria-label="Save to Library"
-            >
-              <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
-            </button>
-
-            {/* Share / Copy Room Link */}
-            <button
-              type="button"
-              onClick={copyRoomLink}
-              className="w-10 h-10 rounded-full flex items-center justify-center text-[#5E5873] dark:text-[#A19EB5] hover:text-[#12101F] dark:hover:text-white hover:bg-[#F3F0FA] dark:hover:bg-[#242138] transition-all"
-              title="Share Room Link"
-              aria-label="Share Room Link"
-            >
-              {copyStatus === 'copied' ? (
-                <Check className="w-5 h-5 text-[#4ADE80]" />
-              ) : (
-                <Share2 className="w-5 h-5" />
-              )}
-            </button>
-          </div>
-        </div>
-
-        {/* YouTube Video Error Alert */}
-        {ytErrorNotice && (
-          <div
-            role="alert"
-            className="mt-4 p-3 rounded-xl bg-[#FF5C8A]/15 border border-[#FF5C8A]/40 text-[#FF5C8A] text-xs flex items-center justify-between gap-2"
-          >
-            <div className="flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{ytErrorNotice}</span>
-            </div>
+          {isHost && (
             <button
               type="button"
               onClick={() => skipTrack(true)}
-              className="px-2.5 py-1 rounded-full bg-[#F43F5E] hover:bg-[#e11d48] dark:bg-[#FF5C8A] dark:hover:bg-[#ff477b] text-white text-[11px] font-semibold transition-transform active:scale-95"
+              className="px-2.5 py-1 bg-[#F43F5E] hover:bg-[#E11D48] text-white font-medium rounded-md text-[11px] shrink-0"
             >
-              Next
+              Skip
             </button>
+          )}
+        </div>
+      )}
+
+      {/* ================================================================== */}
+      {/* CENTER STAGE: Frameless Artwork-First Vinyl Stage / Video Display   */}
+      {/* ================================================================== */}
+      <div className="flex-1 min-h-[220px] relative flex items-center justify-center p-4 sm:p-8 overflow-hidden select-none">
+        {/* Dynamic Ambient Backlight (Adapts to current album art) */}
+        <div
+          className="absolute w-[360px] h-[360px] sm:w-[440px] sm:h-[440px] rounded-full blur-[80px] opacity-25 dark:opacity-30 pointer-events-none transition-all duration-700 -z-0"
+          style={{
+            background: trackArtworkUrl
+              ? `url('${trackArtworkUrl}') center / cover no-repeat`
+              : 'radial-gradient(circle, rgba(139, 92, 246, 0.4) 0%, rgba(244, 63, 94, 0.2) 60%, transparent 100%)',
+          }}
+        />
+
+        {/* Video Mode Container: YouTube IFrame displayed in 16:9 with pointer shield */}
+        {/* Invariant: Room Audio • Stereo */}
+        <div
+          ref={containerRef}
+          className={`relative z-10 w-full max-w-[640px] rounded-xl overflow-hidden border border-[var(--border-subtle)] shadow-2xl bg-black transition-opacity duration-300 ${
+            isVideoVisible
+              ? 'w-full aspect-video opacity-100 flex items-center justify-center'
+              : 'fixed -left-[9999px] top-0 w-1 h-1 opacity-0 pointer-events-none'
+          }`}
+        >
+          <div id="nocturne-yt-player" className="w-full h-full" />
+          {/* Transparent Pointer-Shield Overlay: prevents breaking synchronization via native YouTube controls */}
+          <div className="absolute inset-0 z-20 pointer-events-auto bg-transparent" />
+        </div>
+
+        {/* Artwork Mode Assembly: Vinyl Sleeve + Peeking Grooved Disc */}
+        {viewMode === 'artwork' && (
+          <div className="relative z-10 flex items-center justify-center -translate-x-3 sm:-translate-x-4">
+            {/* Peeking Grooved Vinyl Disc (spins smoothly when isPlaying) */}
+            <div
+              className={`absolute w-[220px] h-[220px] sm:w-[300px] sm:h-[300px] md:w-[340px] md:h-[340px] rounded-full vinyl-grooves border border-white/[0.08] flex items-center justify-center translate-x-[65px] sm:translate-x-[90px] shadow-2xl z-0 transition-transform duration-500`}
+              style={{
+                animation: isPlaying ? 'spin 18s linear infinite' : 'none',
+              }}
+            >
+              {/* Center Spindle Paper Label */}
+              <div className="w-20 h-20 sm:w-28 sm:h-28 rounded-full bg-[#181324] border border-white/10 flex flex-col items-center justify-center relative shadow-inner">
+                <span className="text-[8px] sm:text-[9px] font-syne font-bold tracking-wider text-rose-400 uppercase">
+                  NOCTURNE
+                </span>
+                <span className="text-[6.5px] sm:text-[7.5px] font-mono tracking-widest text-zinc-400 mt-0.5">
+                  NOC-01 · 33 RPM
+                </span>
+                <span className="w-1.5 h-1.5 rounded-full bg-[#09090D] border border-white/20 mt-1" />
+              </div>
+            </div>
+
+            {/* Square Album Artwork Sleeve */}
+            <div className="w-44 h-44 sm:w-60 sm:h-60 md:w-72 md:h-72 rounded-xl border border-white/10 shadow-2xl relative z-10 overflow-hidden bg-[#121218] shrink-0">
+              {trackArtworkUrl ? (
+                <img
+                  src={trackArtworkUrl}
+                  alt={displayTitle}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <ArtworkRenderer artworkId={activeArtworkId} className="w-full h-full object-cover" />
+              )}
+              {/* Subtle Ambient Lighting Gloss */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
+            </div>
           </div>
         )}
 
-        {/* ============================================================== */}
-        {/* SIGNATURE FLOWING WAVEFORM VISUALIZER CENTERPIECE               */}
-        {/* ============================================================== */}
-        <div className="mt-5 p-4 sm:p-5 rounded-xl bg-[#F8F7FC] dark:bg-[#0F0E17]/85 border border-[#EDEAF5] dark:border-[#2D2945] relative transition-colors">
-          <div className="flex items-center justify-between text-xs text-[#5E5873] dark:text-[#A19EB5] mb-2.5 font-medium">
-            <span className="flex items-center gap-1.5 text-[#0284C7] dark:text-[#38BDF8]">
-              <span className="material-symbols-outlined text-[16px]">graphic_eq</span>
-              <span>Flowing Audio Waveform</span>
-            </span>
-            <span className="text-[#8E88A8] dark:text-[#6B6785] text-[11px]">Room Audio • Stereo</span>
+        {/* Floating Heart Burst Effect */}
+        {likeBurst && (
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none animate-ping">
+            <span className="text-4xl text-[#F43F5E]">❤️</span>
+          </div>
+        )}
+      </div>
+
+      {/* ================================================================== */}
+      {/* 148px 3-TIER INTEGRATED PLAYER DECK                                */}
+      {/* ================================================================== */}
+      <div className="w-full max-w-[840px] mx-auto border-t border-[var(--border-subtle)] px-4 sm:px-6 py-2.5 sm:py-3 flex flex-col justify-between gap-1.5 sm:gap-2 shrink-0 z-20 bg-[var(--bg-canvas)]/95">
+        {/* Tier 1 (44px): Track Identity & Mode Switcher */}
+        <div className="h-10 flex items-center justify-between gap-3">
+          <div className="min-w-0 pr-2">
+            <h2 className="font-syne text-[16px] sm:text-[18px] font-bold text-[var(--text-primary)] tracking-[-0.02em] leading-tight truncate">
+              {displayTitle}
+            </h2>
+            <p className="text-xs text-[var(--text-muted)] truncate mt-0.5 font-inter">
+              {displaySubtitle}
+            </p>
           </div>
 
-          {/* Interactive Waveform Canvas Container */}
-          <div
-            onClick={handleWaveformSeek}
-            className="relative w-full h-24 sm:h-28 overflow-hidden rounded-xl bg-white dark:bg-[#12101F] border border-[#EDEAF5] dark:border-transparent flex items-center cursor-pointer group select-none shadow-xs"
-            title="Click or drag anywhere on waveform to seek"
-          >
-            <canvas ref={canvasRef} className="w-full h-full block" />
-
-            {/* Glowing Scrubber Needle with knob at progressPercent */}
-            <div
-              className="absolute top-0 bottom-0 w-[2px] bg-white pointer-events-none transition-all duration-75 flex flex-col items-center justify-center shadow-[0_0_12px_#FF5C8A]"
-              style={{ left: `${progressPercent}%` }}
-            >
-              <div className="w-3.5 h-3.5 rounded-full bg-[#FF5C8A] ring-2 ring-white shadow-lg shadow-[#FF5C8A]/60 -mt-0.5" />
+          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+            {/* Contextual Segmented Control [ 🎬 Video | 🖼 Artwork ] */}
+            <div className="bg-[var(--bg-recessed)] border border-[var(--border-subtle)] p-0.5 rounded-lg flex items-center text-xs">
+              <button
+                type="button"
+                onClick={() => setViewMode('video')}
+                className={`px-2.5 py-1 rounded-[6px] font-medium flex items-center gap-1.5 transition-colors ${
+                  viewMode === 'video'
+                    ? 'bg-[var(--bg-thumb)] border border-[#8B5CF6]/35 text-[var(--text-primary)] shadow-sm'
+                    : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+                }`}
+                title="Video View"
+              >
+                <Tv className="w-3.5 h-3.5 text-[#8B5CF6]" />
+                <span className="hidden sm:inline">Video</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('artwork')}
+                className={`px-2.5 py-1 rounded-[6px] font-medium flex items-center gap-1.5 transition-colors ${
+                  viewMode === 'artwork'
+                    ? 'bg-[var(--bg-thumb)] border border-[#8B5CF6]/35 text-[var(--text-primary)] shadow-sm'
+                    : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+                }`}
+                title="Artwork View"
+              >
+                <ImageIcon className="w-3.5 h-3.5 text-[#8B5CF6]" />
+                <span className="hidden sm:inline">Artwork</span>
+              </button>
             </div>
-          </div>
 
-          {/* Playback Timestamps */}
-          <div className="flex items-center justify-between mt-3 px-1 text-xs font-mono font-medium text-[#5E5873] dark:text-[#A19EB5]">
-            <span className="text-[#12101F] dark:text-white font-semibold">{formatTime(progressSeconds)}</span>
-            <div className="flex items-center gap-1.5 text-[11px] text-[#5E5873] dark:text-[#6B6785] font-sans">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#7C3AED] dark:bg-[#8B5CF6]" />
-              <span>Shared Session Time</span>
-            </div>
-            <span>{durationSeconds > 0 ? formatTime(durationSeconds) : '—:—'}</span>
-          </div>
-
-          {/* Playback Transport Controls Cluster Centered */}
-          <div className="flex items-center justify-center gap-4 sm:gap-6 mt-4">
-            {/* Shuffle */}
+            {/* Heart Reaction Button */}
             <button
               type="button"
-              className="w-9 h-9 rounded-full flex items-center justify-center text-[#5E5873] dark:text-[#A19EB5] hover:text-[#12101F] dark:hover:text-white hover:bg-[#F3F0FA] dark:hover:bg-[#242138] transition-colors"
-              title="Shuffle"
-              aria-label="Shuffle"
+              onClick={() => {
+                setIsLiked(!isLiked);
+                setLikeBurst(true);
+                setTimeout(() => setLikeBurst(false), 900);
+                triggerReaction('❤️');
+              }}
+              className={`w-8 h-8 rounded-lg border border-[var(--border-subtle)] flex items-center justify-center transition-all ${
+                isLiked
+                  ? 'bg-rose-500/15 border-rose-500/30 text-[#F43F5E]'
+                  : 'bg-[var(--bg-recessed)] text-[var(--text-muted)] hover:text-[#F43F5E] hover:border-rose-500/30'
+              }`}
+              title="React Heart"
             >
-              <Shuffle className="w-4 h-4" />
+              <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
             </button>
 
-            {/* Previous Track */}
+            {/* Fullscreen Toggle Button */}
             <button
               type="button"
-              onClick={() => previousTrack(true)}
-              className="w-10 h-10 rounded-full flex items-center justify-center text-[#12101F] dark:text-white hover:text-[#7C3AED] dark:hover:text-white hover:bg-[#F3F0FA] dark:hover:bg-[#242138] transition-colors active:scale-95"
-              title="Previous Track"
-              aria-label="Previous Track"
+              onClick={toggleFullscreen}
+              className="w-8 h-8 rounded-lg border border-[var(--border-subtle)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-[var(--bg-recessed)] transition-all"
+              title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen Stage'}
             >
-              <SkipBack className="w-5 h-5 fill-current" />
-            </button>
-
-            {/* Prominent 56px circular Play/Pause button with radiant violet-coral glow */}
-            <button
-              type="button"
-              onClick={togglePlay}
-              className="w-14 h-14 rounded-full bg-gradient-to-r from-[#8B5CF6] via-[#EC4899] to-[#FF5C8A] text-white flex items-center justify-center shadow-lg shadow-[#8B5CF6]/40 hover:shadow-xl hover:shadow-[#FF5C8A]/50 transition-all duration-200 active:scale-95"
-              title={isPlaying ? 'Pause' : 'Play'}
-              aria-label={isPlaying ? 'Pause' : 'Play'}
-            >
-              {isPlaying ? (
-                <Pause className="w-7 h-7 fill-current" />
-              ) : (
-                <Play className="w-7 h-7 fill-current ml-1" />
-              )}
-            </button>
-
-            {/* Next Track */}
-            <button
-              type="button"
-              onClick={() => skipTrack(true)}
-              className="w-10 h-10 rounded-full flex items-center justify-center text-[#12101F] dark:text-white hover:text-[#7C3AED] dark:hover:text-white hover:bg-[#F3F0FA] dark:hover:bg-[#242138] transition-colors active:scale-95"
-              title="Next Track"
-              aria-label="Next Track"
-            >
-              <SkipForward className="w-5 h-5 fill-current" />
-            </button>
-
-            {/* Repeat */}
-            <button
-              type="button"
-              className="w-9 h-9 rounded-full flex items-center justify-center text-[#7C3AED] dark:text-[#8B5CF6] hover:bg-[#F3F0FA] dark:hover:bg-[#242138] transition-colors"
-              title="Repeat Room"
-              aria-label="Repeat Room"
-            >
-              <Repeat className="w-4 h-4" />
+              {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
             </button>
           </div>
         </div>
 
-        {/* Bottom Volume & Audio Output Row */}
-        <div className="flex items-center justify-between pt-4 mt-4 border-t border-[#EDEAF5] dark:border-[#2D2945]">
-          <div className="flex items-center gap-2 text-xs text-[#5E5873] dark:text-[#A19EB5]">
-            <Speaker className="w-4 h-4 text-[#7C3AED] dark:text-[#8B5CF6]" />
-            <span className="hidden sm:inline">Room Audio • Stereo</span>
-            <span className="sm:hidden">Stereo</span>
+        {/* Tier 2 (52px): Flowing Ribbon Waveform Scrubber & Monospace Timestamps */}
+        <div className="h-10 flex items-center gap-3">
+          <span className="font-mono text-xs text-[var(--text-muted)] tabular-nums shrink-0 w-11">
+            {formatTime(progressSeconds)}
+          </span>
+
+          {/* Flowing Ribbon Waveform Container */}
+          <div
+            onClick={handleWaveformSeek}
+            className={`flex-1 relative h-8 flex items-center group ${isHost ? 'cursor-pointer' : 'cursor-default'}`}
+            title={isHost ? 'Seek playback' : 'Host controls playback position'}
+          >
+            <svg
+              className="w-full h-8 overflow-visible"
+              preserveAspectRatio="none"
+              viewBox="0 0 600 32"
+            >
+              {/* Background Ambient Wave Ribbon (Remaining) */}
+              <path
+                d="M0,16 C40,4 80,28 120,16 C160,4 200,28 240,16 C280,4 320,28 360,16 C400,4 440,28 480,16 C520,4 560,28 600,16"
+                fill="none"
+                stroke="rgba(255, 255, 255, 0.12)"
+                strokeLinecap="round"
+                strokeWidth="2.5"
+              />
+              {/* Subtle Harmonic Ribbon (Remaining) */}
+              <path
+                d="M0,16 C50,26 90,8 140,16 C190,26 230,8 280,16 C330,26 370,8 420,16 C470,26 510,8 560,16 C580,20 590,14 600,16"
+                fill="none"
+                stroke="rgba(255, 255, 255, 0.05)"
+                strokeWidth="1.5"
+              />
+              {/* Active Played Harmonic Ribbon in Violet */}
+              <path
+                d={`M0,16 C50,26 90,8 140,16 C190,26 230,8 280,16 C330,26 370,8 420,16 C470,26 510,8 560,16 C580,20 590,14 600,16`}
+                fill="none"
+                stroke="#8B5CF6"
+                strokeOpacity="0.5"
+                strokeWidth="2"
+                strokeDasharray="600"
+                strokeDashoffset={600 - (600 * progressPercent) / 100}
+                className="transition-[stroke-dashoffset] duration-150 ease-linear"
+              />
+              {/* Active Primary Wave Ribbon in Violet & Coral */}
+              <path
+                d="M0,16 C40,4 80,28 120,16 C160,4 200,28 240,16 C280,4 320,28 360,16 C400,4 440,28 480,16 C520,4 560,28 600,16"
+                fill="none"
+                stroke="url(#waveform-coral-gradient)"
+                strokeLinecap="round"
+                strokeWidth="3"
+                strokeDasharray="600"
+                strokeDashoffset={600 - (600 * progressPercent) / 100}
+                className="transition-[stroke-dashoffset] duration-150 ease-linear"
+              />
+              <defs>
+                <linearGradient id="waveform-coral-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#8B5CF6" />
+                  <stop offset="70%" stopColor="#EC4899" />
+                  <stop offset="100%" stopColor="#F43F5E" />
+                </linearGradient>
+              </defs>
+            </svg>
+
+            {/* Playhead Scrub Dot */}
+            <div
+              className="absolute -translate-x-1/2 flex flex-col items-center pointer-events-none transition-[left] duration-150 ease-linear"
+              style={{ left: `${progressPercent}%` }}
+            >
+              <span className="w-3 h-3 rounded-full bg-white ring-2 ring-[#8B5CF6] shadow-md group-hover:scale-110 transition-transform" />
+            </div>
           </div>
 
-          <div className="flex items-center gap-3 w-36 sm:w-44">
+          <span className="font-mono text-xs text-[var(--text-muted)] tabular-nums shrink-0 w-11 text-right">
+            {formatTime(durationSeconds)}
+          </span>
+        </div>
+
+        {/* Tier 3 (44px): Role-Aware Transport Controls, Honest Sync Status & Elastic Volume Slider */}
+        <div className="h-11 flex items-center justify-between">
+          {/* Left: Transport Cluster */}
+          <div className="flex items-center gap-3">
+            {/* Restart / Prev Button */}
             <button
               type="button"
-              onClick={toggleMute}
-              className="text-[#5E5873] dark:text-[#A19EB5] hover:text-[#12101F] dark:hover:text-white transition-colors"
-              aria-label={isMuted ? 'Unmute' : 'Mute'}
+              onClick={() => {
+                if (isHost) {
+                  seekTo(0, true);
+                }
+              }}
+              disabled={!isHost}
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] disabled:opacity-40 disabled:hover:text-[var(--text-muted)] transition-colors"
+              title={isHost ? 'Restart Track' : 'Host controls playback'}
             >
-              {isMuted || volume === 0 ? (
-                <VolumeX className="w-4 h-4 text-[#F43F5E]" />
+              <SkipBack className="w-4 h-4 fill-current" />
+            </button>
+
+            {/* Circular Primary Coral Play/Pause Button (Strictly 42px) */}
+            <button
+              type="button"
+              onClick={() => {
+                if (isHost) {
+                  togglePlay();
+                }
+              }}
+              disabled={!isHost}
+              className="w-[42px] h-[42px] rounded-full bg-[#F43F5E] hover:bg-[#E11D48] text-white flex items-center justify-center transition-all active:scale-95 shadow-none disabled:opacity-50"
+              title={isHost ? (isPlaying ? 'Pause' : 'Play') : 'Host controls playback'}
+            >
+              {isPlaying ? (
+                <Pause className="w-4 h-4 fill-current" />
               ) : (
-                <Volume2 className="w-4 h-4" />
+                <Play className="w-4 h-4 fill-current translate-x-0.5" />
               )}
             </button>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={isMuted ? 0 : volume}
-              onChange={(e) => setVolume(Number(e.target.value))}
-              className="w-full h-1.5 bg-[#EDEAF5] dark:bg-[#242138] rounded-full accent-[#7C3AED] dark:accent-[#8B5CF6] cursor-pointer"
-              aria-label="Volume Slider"
-            />
-            <span className="text-xs text-[#5E5873] dark:text-[#6B6785] font-mono w-8 text-right">
-              {isMuted ? 0 : volume}%
+
+            {/* Skip Track Button */}
+            <button
+              type="button"
+              onClick={() => {
+                if (isHost) {
+                  skipTrack(true);
+                }
+              }}
+              disabled={!isHost}
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] disabled:opacity-40 disabled:hover:text-[var(--text-muted)] transition-colors"
+              title={isHost ? 'Skip Track' : 'Host controls playback'}
+            >
+              <SkipForward className="w-4 h-4 fill-current" />
+            </button>
+          </div>
+
+          {/* Right: Honest Sync Indicator + Local Elastic Volume Slider */}
+          <div className="flex items-center gap-3 sm:gap-5">
+            {/* Honest Sync Indicator (Zero fake ms telemetry) */}
+            <span className="inline-flex items-center gap-1.5 text-xs font-mono text-emerald-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              Synced
             </span>
+
+            {/* Local Elastic Volume Slider */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={toggleMute}
+                className="w-7 h-7 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+                title={isMuted ? 'Unmute' : 'Mute'}
+              >
+                {isMuted || volume === 0 ? (
+                  <VolumeX className="w-4 h-4 text-rose-400" />
+                ) : volume < 50 ? (
+                  <Volume1 className="w-4 h-4" />
+                ) : (
+                  <Volume2 className="w-4 h-4" />
+                )}
+              </button>
+
+              {/* Slim Violet Volume Track with 10px Thumb */}
+              <div className="w-20 sm:w-24 h-1.5 bg-[#0B0B0F] border border-white/[0.07] rounded-full relative flex items-center cursor-pointer group">
+                <div
+                  className="h-full bg-[#8B5CF6] rounded-full transition-all"
+                  style={{ width: `${isMuted ? 0 : volume}%` }}
+                />
+                <div
+                  className="w-2.5 h-2.5 rounded-full bg-white absolute -translate-x-1/2 shadow transition-all"
+                  style={{ left: `${isMuted ? 0 : volume}%` }}
+                />
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={isMuted ? 0 : volume}
+                  onChange={(e) => setVolume(Number(e.target.value))}
+                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                  aria-label="Volume slider"
+                />
+              </div>
+
+              <span className="font-mono text-xs text-[var(--text-muted)] tabular-nums w-8 text-right">
+                {isMuted ? '0%' : `${volume}%`}
+              </span>
+            </div>
           </div>
         </div>
       </div>

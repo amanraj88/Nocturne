@@ -19,8 +19,7 @@ export default function App({ Component, pageProps }: AppProps) {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
       <div
-        className="font-sans flex min-h-screen flex-col bg-[var(--color-deep-ink)] text-[var(--color-warm-bone)] selection:bg-[#FF5C8A] selection:text-white w-full max-w-full overflow-x-hidden transition-colors duration-200"
-        suppressHydrationWarning
+        className="font-sans flex min-h-screen flex-col bg-[var(--bg-canvas)] text-[var(--text-primary)] selection:bg-[#FF5C8A] selection:text-white w-full max-w-full overflow-x-hidden transition-colors duration-200"
       >
         <Header />
         <main className="flex-1 w-full max-w-full overflow-x-hidden">
