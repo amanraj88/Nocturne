@@ -1,414 +1,272 @@
 import React, { useState } from 'react';
 import { useLounge } from '@/context/LoungeContext';
-import { ArtworkRenderer } from '@/components/artwork';
-import { formatTime } from '@/lib/utils';
+import { formatTime, parseYouTubeVideoId } from '@/lib/utils';
 import {
-  Plus,
-  Trash2,
-  ArrowUp,
-  Disc3,
-  Upload,
-  AlertCircle,
-  GripVertical,
-  Link as LinkIcon,
+  Youtube,
+  ChevronDown,
+  X,
   Loader2,
-  Info,
-  Radio,
-  Check,
+  AlertCircle,
+  Plus,
 } from 'lucide-react';
-import { Track } from '@/types';
-
-const TrackThumb: React.FC<{ track: Track; isCurrent: boolean }> = ({ track, isCurrent }) => {
-  const artworkId = track.artworkId || 'noc-01';
-
-  return (
-    <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-[#0F0E17] border border-[#2D2945]">
-      <ArtworkRenderer artworkId={artworkId} className="w-full h-full object-cover" />
-      {isCurrent && (
-        <div className="absolute inset-0 bg-[#0F0E17]/40 flex items-center justify-center">
-          <span className="w-2 h-2 rounded-full bg-[#4ADE80] animate-pulse" />
-        </div>
-      )}
-    </div>
-  );
-};
 
 export const QueueDock: React.FC = () => {
   const {
     currentRoom,
     queue,
     currentTrack,
-    voteSkip,
     removeTrack,
-    selectTrack,
-    setIsSearchOpen,
     addTrackToQueue,
-    loadLocalAudioFiles,
-    shareLocalAudioFile,
-    sharingTrackId,
-    audioError,
+    clientId,
+    clientName,
   } = useLounge();
 
-  const [activeTab, setActiveTab] = useState<'queue' | 'info'>('queue');
   const [youtubeInputUrl, setYoutubeInputUrl] = useState('');
   const [isAddingUrl, setIsAddingUrl] = useState(false);
   const [inputError, setInputError] = useState<string | null>(null);
+  const [isQueueExpanded, setIsQueueExpanded] = useState(false);
 
-  // Directly handle adding a YouTube URL from the inline input
+  // Role check: Host vs Member
+  const isHost = Boolean(
+    currentRoom?.host?.id && (currentRoom.host.id === clientId || currentRoom.host.name === clientName)
+  );
+
+  // Strict FIFO queue: all tracks after the active track
+  const currentIdx = queue.findIndex((t) => t.id === currentTrack?.id);
+  const upcomingQueue = currentIdx >= 0 ? queue.slice(currentIdx + 1) : queue;
+  const nextTrack = upcomingQueue.length > 0 ? upcomingQueue[0] : null;
+
+  // Handle adding a YouTube URL directly from the inline composer capsule
   const handleInlineAddYouTube = async (e: React.FormEvent) => {
     e.preventDefault();
     const url = youtubeInputUrl.trim();
-    if (!url) return;
+    if (!url || isAddingUrl) return;
+
+    const videoId = parseYouTubeVideoId(url);
+    if (!videoId) {
+      setInputError('Please enter a valid YouTube video URL or ID.');
+      return;
+    }
 
     setIsAddingUrl(true);
     setInputError(null);
 
     try {
-      // Validate YouTube URL
-      const res = await fetch(`/api/youtube/info?url=${encodeURIComponent(url)}`);
-      const info = await res.json();
+      const res = await fetch(`/api/youtube/info?id=${encodeURIComponent(videoId)}`);
+      let info: any = null;
+      try {
+        info = await res.json();
+      } catch {}
 
-      if (!res.ok || !info.valid) {
-        setInputError(info.error || 'Could not resolve YouTube video info.');
+      let title = 'YouTube Track';
+      let artist = 'YouTube Broadcast';
+      let thumbnail = `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+      let durationSeconds = 0;
+
+      if (res.ok && info && info.valid !== false) {
+        title = info.title || title;
+        artist = info.artist || artist;
+        thumbnail = info.thumbnail || thumbnail;
+        durationSeconds = info.durationSeconds || 0;
+      } else if (res.status === 400 || (info && info.valid === false && res.status !== 503)) {
+        setInputError(info?.error || 'Could not resolve YouTube video info.');
         setIsAddingUrl(false);
         return;
       }
 
+      if (!info) {
+        info = { durationSeconds: 0 };
+      }
+
       const didAdd = await addTrackToQueue({
-        title: info.title || 'YouTube Track',
-        artist: info.artist || 'YouTube Broadcast',
-        youtubeId: info.videoId,
+        title: title || 'YouTube Track',
+        artist: artist || 'YouTube Broadcast',
+        youtubeId: (info && info.videoId) || videoId,
         durationSeconds: info.durationSeconds || 0,
         artworkId: currentRoom?.artworkId || 'noc-01',
+        albumArt: thumbnail || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
         sourceType: 'youtube',
       });
 
       if (didAdd) {
         setYoutubeInputUrl('');
+        setInputError(null);
       } else {
-        setInputError('Failed to add track to queue. Try again.');
+        setInputError('Failed to add track to queue. Please try again.');
       }
     } catch (err: any) {
-      setInputError(err.message || 'Error processing YouTube URL');
+      setInputError(err?.message || 'Error processing YouTube URL.');
     } finally {
       setIsAddingUrl(false);
     }
   };
 
   return (
-    <div className="relative flex flex-col h-full bg-white dark:bg-[#1A1829] border border-[#EDEAF5] dark:border-[#2D2945] rounded-xl shadow-sm dark:shadow-xl overflow-hidden transition-colors">
-      {/* Queue Header with Navigation Tabs (Stitch Direction B v3) */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[#EDEAF5] dark:border-[#2D2945] bg-white dark:bg-[#1A1829]">
-        <div className="flex items-center gap-4">
-          <button
-            type="button"
-            onClick={() => setActiveTab('queue')}
-            className={`text-sm font-semibold pb-1.5 transition-colors flex items-center gap-1.5 ${
-              activeTab === 'queue'
-                ? 'text-[#7C3AED] dark:text-white border-b-2 border-[#7C3AED] dark:border-[#8B5CF6]'
-                : 'text-[#5E5873] dark:text-[#A19EB5] hover:text-[#12101F] dark:hover:text-white'
-            }`}
-          >
-            <span>Up Next</span>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-[#F3F0FA] dark:bg-[#8B5CF6]/20 text-[#6D28D9] dark:text-[#DDD6FE] font-mono">
-              {queue.length}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('info')}
-            className={`text-sm font-medium pb-1.5 transition-colors ${
-              activeTab === 'info'
-                ? 'text-[#7C3AED] dark:text-white border-b-2 border-[#7C3AED] dark:border-[#8B5CF6]'
-                : 'text-[#5E5873] dark:text-[#A19EB5] hover:text-[#12101F] dark:hover:text-white'
-            }`}
-          >
-            Room Info
-          </button>
-        </div>
-
-        {/* Load File & Add Music Actions */}
-        <div className="flex items-center gap-2">
-          <label
-            className="flex items-center gap-1.5 rounded-full bg-[#F3F0FA] dark:bg-[#242138] hover:bg-[#EDEAF5] dark:hover:bg-[#2D2945] border border-[#EDEAF5] dark:border-[#2D2945] text-xs font-medium text-[#7C3AED] dark:text-[#DDD6FE] px-2.5 py-1 transition-colors cursor-pointer"
-            title="Load local audio file"
-          >
-            <Upload className="w-3.5 h-3.5 text-[#7C3AED] dark:text-[#8B5CF6]" />
-            <span className="hidden sm:inline">File</span>
+    <div className="w-full bg-[var(--bg-panel)] border-b border-[var(--border-subtle)] shrink-0 relative z-20 flex flex-col">
+      {/* ================================================================== */}
+      {/* ROW 1 (44px): Unified Composer Capsule                              */}
+      {/* Invariant: Add YouTube URL                                         */}
+      {/* Invariant: Add Music                                               */}
+      {/* Invariant: bg-mineral                                              */}
+      {/* ================================================================== */}
+      <div className="h-[44px] px-3 flex items-center border-b border-[var(--border-subtle)] bg-[var(--bg-panel)] shrink-0">
+        <form onSubmit={handleInlineAddYouTube} className="w-full">
+          <div className="w-full h-8 rounded-lg bg-[var(--bg-recessed)] border border-[var(--border-subtle)] focus-within:border-[#8B5CF6]/50 px-2.5 flex items-center gap-2 transition-colors shadow-inner">
+            <Youtube className="w-3.5 h-3.5 text-rose-500 shrink-0" />
             <input
-              type="file"
-              accept="audio/*,.mp3,.wav,.flac"
-              multiple
-              className="sr-only"
+              type="text"
+              value={youtubeInputUrl}
               onChange={(e) => {
-                if (e.target.files && e.target.files.length > 0) {
-                  loadLocalAudioFiles(e.target.files);
-                  e.target.value = '';
-                }
+                setYoutubeInputUrl(e.target.value);
+                if (inputError) setInputError(null);
               }}
+              placeholder="Paste YouTube URL..."
+              className="flex-1 bg-transparent border-none p-0 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:ring-0 focus:outline-none min-w-0"
+              aria-label="Add YouTube URL"
             />
-          </label>
-
-          <button
-            type="button"
-            onClick={() => setIsSearchOpen(true)}
-            aria-label="Add YouTube URL"
-            title="Add YouTube URL"
-            className="flex items-center gap-1.5 rounded-full bg-mineral bg-[#7C3AED] dark:bg-[#8B5CF6] hover:bg-[#6D28D9] dark:hover:bg-[#7C3AED] text-white px-3 py-1 text-xs font-semibold shadow-md shadow-purple-500/20 transition-all active:scale-[0.98]"
-          >
-            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-            <span>Add Music</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Inline YouTube URL Input (Visible in Queue Tab) */}
-      {activeTab === 'queue' && (
-        <div className="p-3 bg-[#F8F7FC] dark:bg-[#12101F]/80 border-b border-[#EDEAF5] dark:border-[#2D2945]">
-          <form onSubmit={handleInlineAddYouTube} className="flex items-center gap-2">
-            <div className="relative flex-1">
-              <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#5E5873] dark:text-[#A19EB5]" />
-              <input
-                type="text"
-                value={youtubeInputUrl}
-                onChange={(e) => setYoutubeInputUrl(e.target.value)}
-                placeholder="Paste YouTube link (e.g. https://youtu.be/...)"
-                className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-white dark:bg-[#242138] border border-[#EDEAF5] dark:border-[#2D2945] focus:border-[#7C3AED] dark:focus:border-[#8B5CF6] focus:ring-1 focus:ring-[#7C3AED] dark:focus:ring-[#8B5CF6] text-xs text-[#12101F] dark:text-white placeholder-[#8E88A8] dark:placeholder-[#6B6785] transition-colors outline-none shadow-xs"
-              />
-            </div>
             <button
               type="submit"
               disabled={isAddingUrl || !youtubeInputUrl.trim()}
-              className="px-3 py-1.5 rounded-lg bg-[#F43F5E] hover:bg-[#e11d48] dark:bg-[#FF5C8A] dark:hover:bg-[#ff477b] disabled:opacity-50 text-white text-xs font-semibold shrink-0 transition-transform active:scale-95 flex items-center gap-1 shadow-md shadow-pink-500/20"
+              className="h-6 px-2.5 rounded-md bg-[#8B5CF6] hover:bg-[#7C3AED] disabled:opacity-40 text-white text-[11px] font-medium shrink-0 flex items-center gap-1 transition-colors"
+              title="Add YouTube URL"
             >
               {isAddingUrl ? (
                 <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <Loader2 className="w-3 h-3 animate-spin" />
                   <span>Adding…</span>
                 </>
               ) : (
-                <>
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Add to Queue</span>
-                </>
+                <span>+ Add</span>
               )}
             </button>
-          </form>
+          </div>
+        </form>
+      </div>
 
-          {inputError && (
-            <p className="mt-1.5 text-[11px] text-[#FF5C8A] flex items-center gap-1">
-              <AlertCircle className="w-3 h-3 shrink-0" />
-              <span>{inputError}</span>
-            </p>
-          )}
+      {/* Persistent Inline Error Banner */}
+      {inputError && (
+        <div className="px-3 py-1.5 bg-rose-500/10 border-b border-rose-500/20 text-rose-300 text-xs flex items-center justify-between gap-2 shrink-0 animate-in fade-in duration-150">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <AlertCircle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+            <span className="truncate">{inputError}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setInputError(null)}
+            className="text-rose-400 hover:text-white p-0.5 shrink-0"
+            aria-label="Dismiss error"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
         </div>
       )}
 
-      {/* Tab 1: Queue Scroll Area */}
-      {activeTab === 'queue' ? (
-        <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
-          {/* CURRENTLY PLAYING ITEM (Elevated Highlight Card - Direction B v3) */}
-          {currentTrack && (
-            <div
-              onClick={() => selectTrack(currentTrack.id)}
-              className="p-3 rounded-xl bg-[#F5F2FC] dark:bg-gradient-to-r dark:from-[#242138] dark:to-[#1F1C33] border border-[#DDD6FE] dark:border-[#8B5CF6]/50 shadow-sm dark:shadow-lg relative cursor-pointer group"
-            >
-              <div className="flex items-center justify-between mb-2">
-                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-[#4ADE80]/15 border border-emerald-200 dark:border-[#4ADE80]/30 text-[10px] font-bold text-emerald-700 dark:text-[#4ADE80] uppercase tracking-wide">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-[#4ADE80] animate-ping" />
-                  <span>Playing Now</span>
-                </div>
-                <div className="flex items-end gap-[2px] h-3.5">
-                  <span className="w-[2px] bg-[#7C3AED] dark:bg-[#8B5CF6] rounded-full eq-1" />
-                  <span className="w-[2px] bg-[#7C3AED] dark:bg-[#8B5CF6] rounded-full eq-2" />
-                  <span className="w-[2px] bg-[#7C3AED] dark:bg-[#8B5CF6] rounded-full eq-3" />
-                  <span className="w-[2px] bg-[#7C3AED] dark:bg-[#8B5CF6] rounded-full eq-4" />
-                </div>
-              </div>
+      {/* ================================================================== */}
+      {/* ROW 2 (44px): Expandable Up Next Drawer Trigger                     */}
+      {/* ================================================================== */}
+      <div
+        onClick={() => setIsQueueExpanded(!isQueueExpanded)}
+        className="h-[44px] px-3.5 flex items-center justify-between cursor-pointer hover:bg-[var(--bg-elevated)]/60 transition-colors select-none shrink-0"
+        title={isQueueExpanded ? 'Collapse queue' : 'Expand upcoming queue'}
+      >
+        <span className="flex items-center gap-1.5 font-mono text-xs text-[var(--text-primary)]">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#8B5CF6]" />
+          <span>
+            Up Next · {upcomingQueue.length} {upcomingQueue.length === 1 ? 'track' : 'tracks'}
+          </span>
+        </span>
 
-              <div className="flex items-center gap-3">
-                <TrackThumb track={currentTrack} isCurrent={true} />
-                <div className="flex-1 min-w-0">
-                  <h4 className="text-sm font-semibold text-[#12101F] dark:text-white truncate group-hover:text-[#7C3AED] dark:group-hover:text-[#DDD6FE]">
-                    {currentTrack.title}
-                  </h4>
-                  <p className="text-xs text-[#5E5873] dark:text-[#A19EB5] truncate">
-                    {currentTrack.artist}
-                  </p>
-                </div>
-                <div className="text-right shrink-0">
-                  <span className="text-xs font-mono font-medium text-[#12101F] dark:text-white">
-                    {currentTrack.durationSeconds > 0 ? formatTime(currentTrack.durationSeconds) : '—:—'}
-                  </span>
-                  <p className="text-[10px] text-[#8E88A8] dark:text-[#6B6785]">via {currentTrack.addedBy.name}</p>
-                </div>
-              </div>
-            </div>
-          )}
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="text-xs text-[var(--text-muted)] truncate max-w-[165px]">
+            {nextTrack ? `Next: ${nextTrack.title}` : 'Queue empty'}
+          </span>
+          <ChevronDown
+            className={`w-3.5 h-3.5 text-[var(--text-muted)] transition-transform duration-200 shrink-0 ${
+              isQueueExpanded ? 'rotate-180 text-[var(--text-primary)]' : ''
+            }`}
+          />
+        </div>
+      </div>
 
-          {/* UPCOMING TRACKS IN SHARED QUEUE */}
-          {queue.length === 0 ? (
-            <div className="py-12 px-4 text-center">
-              <Disc3 className="w-10 h-10 text-[#7C3AED]/50 dark:text-[#8B5CF6]/50 mx-auto animate-spin-slow mb-3" />
-              <p className="text-sm font-semibold text-[#12101F] dark:text-white">The queue is empty</p>
-              <p className="text-xs text-[#5E5873] dark:text-[#A19EB5] mt-1 max-w-xs mx-auto">
-                Paste any YouTube link above or click Add Music to start the session.
-              </p>
+      {/* ================================================================== */}
+      {/* EXPANDABLE FIFO QUEUE SHEET (Opens directly below Row 2)           */}
+      {/* ================================================================== */}
+      {isQueueExpanded && (
+        <div className="max-h-[260px] overflow-y-auto bg-[var(--bg-panel)] border-t border-[var(--border-subtle)] shadow-2xl z-30 transition-all divide-y divide-[var(--border-subtle)]/50">
+          {upcomingQueue.length === 0 ? (
+            <div className="p-4 text-xs font-mono text-[var(--text-muted)] text-center leading-relaxed">
+              Queue is empty — paste a YouTube link above to line up the next track.
             </div>
           ) : (
-            queue.map((track, idx) => {
-              const isCurrent = track.id === currentTrack?.id;
+            upcomingQueue.map((track, idx) => {
+              // Role-gated removal: Host can remove any; Member only tracks they added
+              const canRemove = Boolean(
+                isHost ||
+                (track.addedBy?.id && track.addedBy.id === clientId) ||
+                ((track as any).addedByUid && (track as any).addedByUid === clientId)
+              );
 
               return (
                 <div
                   key={track.id}
-                  onClick={() => selectTrack(track.id)}
-                  className={`group flex items-center justify-between p-2.5 rounded-xl transition-all border cursor-pointer ${
-                    isCurrent
-                      ? 'bg-[#F3F0FA] dark:bg-[#242138]/90 border-[#DDD6FE] dark:border-[#8B5CF6]/40 shadow-xs'
-                      : 'hover:bg-[#F8F7FC] dark:hover:bg-[#242138]/60 border-transparent hover:border-[#EDEAF5] dark:hover:border-[#2D2945]'
-                  }`}
+                  className="px-3 py-2 flex items-center justify-between gap-2.5 hover:bg-[var(--bg-recessed)]/60 transition-colors group"
                 >
-                  <div className="flex items-center gap-3 min-w-0 pr-2">
-                    <span className="w-4 text-xs font-mono font-semibold text-[#6B6785] text-center group-hover:text-white shrink-0">
-                      {idx + 1}
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    {/* Monospace index */}
+                    <span className="font-mono text-[11px] text-[var(--text-muted)] w-5 shrink-0 text-center">
+                      {String(idx + 1).padStart(2, '0')}
                     </span>
 
-                    <TrackThumb track={track} isCurrent={isCurrent} />
+                    {/* 32x32 Thumbnail */}
+                    <div className="w-8 h-8 rounded-md overflow-hidden bg-black shrink-0 border border-white/10 relative">
+                      {track.albumArt ? (
+                        <img
+                          src={track.albumArt}
+                          alt={track.title}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-[#181324] flex items-center justify-center text-[9px] font-mono text-zinc-400">
+                          YT
+                        </div>
+                      )}
+                    </div>
 
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span
-                          className={`text-xs truncate transition-colors ${
-                            isCurrent ? 'font-semibold text-[#12101F] dark:text-white' : 'font-medium text-[#12101F] dark:text-[#DDD6FE] group-hover:text-[#7C3AED] dark:group-hover:text-white'
-                          }`}
-                        >
-                          {track.title}
-                        </span>
-                        {track.sourceType === 'youtube' && (
-                          <span className="rounded-[3px] bg-[#F3F0FA] dark:bg-[#242138] text-[#7C3AED] dark:text-[#DDD6FE] border border-[#EDEAF5] dark:border-[#2D2945] px-1 py-0.2 text-[9px] font-sans font-medium shrink-0">
-                            YouTube
-                          </span>
-                        )}
-                        {track.sourceType === 'shared-audio' && (
-                          <span className="rounded-[3px] bg-[#7C3AED]/10 dark:bg-[#8B5CF6]/20 text-[#7C3AED] dark:text-[#DDD6FE] border border-[#DDD6FE] dark:border-[#8B5CF6]/30 px-1 py-0.2 text-[9px] font-sans font-medium shrink-0">
-                            Shared
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1.5 text-[11px] text-[#5E5873] dark:text-[#A19EB5] mt-0.5">
-                        <span className="truncate">{track.artist}</span>
-                        <span className="text-[#8E88A8] dark:text-[#6B6785]">•</span>
-                        <span className="truncate text-[#8E88A8] dark:text-[#6B6785] text-[10px]">via {track.addedBy.name}</span>
-                      </div>
+                    {/* Title & Curator */}
+                    <div className="min-w-0 flex-1">
+                      <h4 className="text-xs font-medium text-[var(--text-primary)] truncate">
+                        {track.title}
+                      </h4>
+                      <p className="text-[10px] text-[var(--text-muted)] truncate mt-0.5">
+                        Added by {track.addedBy?.name || 'Curator'}
+                      </p>
                     </div>
                   </div>
 
+                  {/* Right: Duration & Remove action */}
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-[11px] font-mono text-[#5E5873] dark:text-[#A19EB5]">
+                    <span className="font-mono text-[11px] text-[var(--text-muted)]">
                       {track.durationSeconds > 0 ? formatTime(track.durationSeconds) : '—:—'}
                     </span>
 
-                    {/* Local file sharing */}
-                    {track.isLocalFile && (
+                    {canRemove && (
                       <button
                         type="button"
-                        disabled={sharingTrackId === track.id}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          void shareLocalAudioFile(track.id);
-                        }}
-                        className="inline-flex items-center gap-1 rounded-full border border-[#8B5CF6]/50 px-2 py-0.5 text-[10px] text-[#DDD6FE] hover:bg-[#8B5CF6]/10 disabled:opacity-60"
-                        title="Share audio copy with room"
+                        onClick={() => removeTrack(track.id)}
+                        className="opacity-0 group-hover:opacity-100 p-1 text-[var(--text-muted)] hover:text-rose-400 transition-all"
+                        title="Remove from queue"
+                        aria-label="Remove track"
                       >
-                        <Upload className="w-3 h-3" />
-                        <span>{sharingTrackId === track.id ? 'Sharing…' : 'Share'}</span>
+                        <X className="w-3.5 h-3.5" />
                       </button>
                     )}
-
-                    {/* Skip vote */}
-                    {!isCurrent && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          voteSkip(track.id);
-                        }}
-                        className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs transition-colors ${
-                          track.userVotedSkip
-                            ? 'bg-[#FF5C8A]/20 text-[#FF5C8A] border border-[#FF5C8A]/40'
-                            : 'bg-[#242138] text-[#A19EB5] hover:text-white border border-[#2D2945]'
-                        }`}
-                        title="Vote to skip track"
-                      >
-                        <ArrowUp className="w-3 h-3" />
-                        <span className="font-mono text-[11px]">{track.skipVotes}</span>
-                      </button>
-                    )}
-
-                    {/* Remove track */}
-                    {!isCurrent && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          removeTrack(track.id);
-                        }}
-                        className="opacity-0 group-hover:opacity-100 p-1 text-[#A19EB5] hover:text-[#FF5C8A] transition-opacity"
-                        aria-label="Remove track from queue"
-                        title="Remove track"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-
-                    {/* Drag handle */}
-                    <span className="text-[#6B6785] group-hover:text-[#A19EB5] p-0.5">
-                      <GripVertical className="w-3.5 h-3.5" />
-                    </span>
                   </div>
                 </div>
               );
             })
           )}
         </div>
-      ) : (
-        /* Tab 2: Room Info Tab */
-        <div className="flex-1 overflow-y-auto p-5 space-y-4 text-xs text-[#5E5873] dark:text-[#A19EB5]">
-          <div>
-            <h4 className="text-[#12101F] dark:text-white font-semibold text-sm mb-1">{currentRoom.title}</h4>
-            <p className="leading-relaxed">{currentRoom.description}</p>
-          </div>
-          <div className="pt-3 border-t border-[#EDEAF5] dark:border-[#2D2945] space-y-2">
-            <div className="flex items-center justify-between">
-              <span>Mode</span>
-              <span className="text-[#12101F] dark:text-white font-medium capitalize">{currentRoom.mode || 'Collaborative'}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span>Host</span>
-              <span className="text-[#12101F] dark:text-white font-medium">{currentRoom.host?.name || 'NOCTURNE'}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span>Vibe</span>
-              <span className="text-[#12101F] dark:text-white font-medium">{currentRoom.vibeTag}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span>Artwork ID</span>
-              <span className="font-mono text-[#6D28D9] dark:text-[#DDD6FE]">[{currentRoom.artworkId?.toUpperCase() || 'NOC-01'}]</span>
-            </div>
-          </div>
-        </div>
       )}
-
-      {/* Bottom Collaborative Status Banner (Stitch Direction B v3) */}
-      <div className="px-4 py-3 border-t border-[#EDEAF5] dark:border-[#2D2945] bg-white dark:bg-[#1A1829] flex items-center justify-between text-xs text-[#5E5873] dark:text-[#A19EB5]">
-        <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-[#4ADE80]" />
-          <span>Collaborative Queue • Anyone can add tracks</span>
-        </div>
-        <span className="text-[#DDD6FE] text-[11px] font-medium">Auto-sync</span>
-      </div>
     </div>
   );
 };

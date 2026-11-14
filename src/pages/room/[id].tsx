@@ -10,7 +10,6 @@ import {
   ChevronLeft,
   Link as LinkIcon,
   Check,
-  Disc3,
   MessageSquare,
   Users,
   Edit2,
@@ -36,7 +35,6 @@ export default function RoomPage() {
   } = useLounge();
 
   const [isMounted, setIsMounted] = useState(false);
-  const [activeDockTab, setActiveDockTab] = useState<'queue' | 'chat'>('chat');
   const [mobileTab, setMobileTab] = useState<'stage' | 'dock'>('stage');
   const [isCopied, setIsCopied] = useState(false);
   const [isAvatarPopoverOpen, setIsAvatarPopoverOpen] = useState(false);
@@ -448,56 +446,27 @@ export default function RoomPage() {
               <VinylStage />
             </section>
 
-            {/* Right Column — Fixed 370px Social Dock (Queue & Chat) */}
+            {/* Right Column — Fixed 370px Social Dock (Queue & Chat Stacked) */}
             <aside
-              className={`w-full lg:w-[370px] shrink-0 h-full bg-[var(--bg-panel)] border-t lg:border-t-0 lg:border-l border-[var(--border-subtle)] flex flex-col overflow-hidden ${
+              className={`w-full lg:w-[370px] shrink-0 h-full bg-[var(--bg-panel)] border-t lg:border-t-0 lg:border-l border-[var(--border-subtle)] flex flex-col overflow-hidden relative ${
                 mobileTab === 'stage' ? 'hidden lg:flex' : 'flex'
               }`}
             >
-              {/* Dock Pinned Top: Segmented Tabs [ Queue | Chat ] */}
-              <div className="h-11 px-3 border-b border-[var(--border-subtle)] bg-[var(--bg-panel)] flex items-center justify-between shrink-0">
-                <div className="bg-[var(--bg-recessed)] border border-[var(--border-subtle)] p-0.5 rounded-lg flex items-center gap-1 text-xs">
-                  <button
-                    type="button"
-                    onClick={() => setActiveDockTab('queue')}
-                    className={`px-3 py-1 rounded-[6px] font-medium flex items-center gap-1.5 transition-colors ${
-                      activeDockTab === 'queue'
-                        ? 'bg-[var(--bg-thumb)] border border-[#8B5CF6]/35 text-[var(--text-primary)] shadow-sm'
-                        : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
-                    }`}
-                  >
-                    <Disc3 className="w-3.5 h-3.5 text-[#8B5CF6]" />
-                    <span>Queue ({queue.length})</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setActiveDockTab('chat')}
-                    className={`px-3 py-1 rounded-[6px] font-medium flex items-center gap-1.5 transition-colors ${
-                      activeDockTab === 'chat'
-                        ? 'bg-[var(--bg-thumb)] border border-[#8B5CF6]/35 text-[var(--text-primary)] shadow-sm'
-                        : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
-                    }`}
-                  >
-                    <MessageSquare className="w-3.5 h-3.5 text-[#8B5CF6]" />
-                    <span>Chat ({chatMessages.length})</span>
-                  </button>
-                </div>
-
-                {/* Mobile Return to Stage Button */}
+              {/* Mobile Return to Stage Header Bar */}
+              <div className="lg:hidden h-10 px-3 border-b border-[var(--border-subtle)] bg-[var(--bg-panel)] flex items-center justify-between shrink-0">
+                <span className="font-mono text-xs text-[var(--text-muted)]">Queue &amp; Chat</span>
                 <button
                   type="button"
                   onClick={() => setMobileTab('stage')}
-                  className="lg:hidden text-xs font-mono text-[#8B5CF6] hover:underline"
+                  className="text-xs font-mono text-[#8B5CF6] hover:underline"
                 >
                   Back to Player
                 </button>
               </div>
 
-              {/* Active Tab Viewport */}
-              <div className="flex-1 overflow-y-auto">
-                {activeDockTab === 'queue' ? <QueueDock /> : <SocialDock />}
-              </div>
+              {/* Stacked Layout: Top 88px Unified Queue Header + Full-Height Chat Stream */}
+              <QueueDock />
+              <SocialDock />
             </aside>
           </main>
 
