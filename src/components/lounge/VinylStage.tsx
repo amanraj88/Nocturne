@@ -165,10 +165,9 @@ export const VinylStage: React.FC = () => {
 
       try {
         const activeYtId = currentYoutubeIdRef.current;
-        const player = new window.YT.Player('nocturne-yt-player', {
+        const playerConfig: any = {
           height: '100%',
           width: '100%',
-          videoId: activeYtId || undefined,
           playerVars: {
             autoplay: 1,
             controls: 0,
@@ -255,7 +254,11 @@ export const VinylStage: React.FC = () => {
               }
             },
           },
-        });
+        };
+        if (activeYtId) {
+          playerConfig.videoId = activeYtId;
+        }
+        const player = new window.YT.Player('nocturne-yt-player', playerConfig);
       } catch (e) {
         isInitializingPlayerRef.current = false;
         console.error('[NOCTURNE YouTube] Setup error:', e);
@@ -451,7 +454,7 @@ export const VinylStage: React.FC = () => {
           className={`relative z-10 w-full max-w-[640px] rounded-xl overflow-hidden border border-[var(--border-subtle)] shadow-2xl bg-black transition-opacity duration-300 ${
             isVideoVisible
               ? 'w-full aspect-video opacity-100 flex items-center justify-center'
-              : 'fixed -left-[9999px] top-0 w-1 h-1 opacity-0 pointer-events-none'
+              : 'fixed -left-[9999px] top-0 w-[240px] h-[240px] opacity-0 pointer-events-none'
           }`}
         >
           <div id="nocturne-yt-player" className="w-full h-full" />
@@ -482,7 +485,7 @@ export const VinylStage: React.FC = () => {
             </div>
 
             {/* Square Album Artwork Sleeve */}
-            <div className="w-44 h-44 sm:w-60 sm:h-60 md:w-72 md:h-72 rounded-xl border border-white/10 shadow-2xl relative z-10 overflow-hidden bg-[#121218] shrink-0">
+            <div className="w-52 h-52 sm:w-64 sm:h-64 md:w-72 md:h-72 rounded-xl border border-white/10 shadow-2xl relative z-10 overflow-hidden bg-[#121218] shrink-0">
               {trackArtworkUrl ? (
                 <img
                   src={trackArtworkUrl}
@@ -717,10 +720,22 @@ export const VinylStage: React.FC = () => {
           {/* Right: Honest Sync Indicator + Local Elastic Volume Slider */}
           <div className="flex items-center gap-3 sm:gap-5">
             {/* Honest Sync Indicator (Zero fake ms telemetry) */}
-            <span className="inline-flex items-center gap-1.5 text-xs font-mono text-emerald-400">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              Synced
-            </span>
+            {currentRoom?.host?.isListening === false ? (
+              <span className="inline-flex items-center gap-1.5 text-xs font-mono text-amber-400/90" title="Host is currently disconnected">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                Host Offline
+              </span>
+            ) : isSeekingDueToSyncRef.current ? (
+              <span className="inline-flex items-center gap-1.5 text-xs font-mono text-amber-400" title="Synchronizing drift">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                Syncing
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 text-xs font-mono text-emerald-400" title="Playback in lockstep">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                Synced
+              </span>
+            )}
 
             {/* Local Elastic Volume Slider */}
             <div className="flex items-center gap-2">
