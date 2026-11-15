@@ -23,7 +23,7 @@ export const STARTER_TAPES: StarterTape[] = [
     id: 'after-hours-electronic',
     title: 'After Hours Electronic',
     mood: 'Electronic',
-    subtitle: 'Hypnotic minimal techno, modular synthesis, and late night low-end.',
+    subtitle: 'Bicep, Overmono, Four Tet, and Fred again..',
     totalDurationLabel: 'Total 38m · 6 tracks',
     tracks: [
       {
@@ -80,7 +80,7 @@ export const STARTER_TAPES: StarterTape[] = [
     id: 'sub-bass-and-rain',
     title: 'Sub-Bass & Rain',
     mood: 'Ambient',
-    subtitle: 'Downtempo vinyl hiss, rainy asphalt tones, and fractured post-garage.',
+    subtitle: 'Burial, Joy Orbison, Mount Kimbie, and Mala.',
     totalDurationLabel: 'Total 32m · 5 tracks',
     tracks: [
       {
@@ -129,7 +129,7 @@ export const STARTER_TAPES: StarterTape[] = [
     id: 'midnight-analog',
     title: 'Midnight Analog',
     mood: 'Late Night',
-    subtitle: 'Warm analog synthesizers, tape saturation, and twilight drift.',
+    subtitle: 'Boards of Canada, Aphex Twin, and Tycho.',
     totalDurationLabel: 'Total 35m · 5 tracks',
     tracks: [
       {
@@ -178,7 +178,7 @@ export const STARTER_TAPES: StarterTape[] = [
     id: 'code-and-deep-focus',
     title: 'Code & Deep Focus',
     mood: 'Deep Focus',
-    subtitle: 'Deep flow-state electronica, mechanical rhythms, and glitch textures.',
+    subtitle: 'Jon Hopkins, Nils Frahm, and Floating Points.',
     totalDurationLabel: 'Total 42m · 6 tracks',
     tracks: [
       {

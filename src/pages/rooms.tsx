@@ -150,16 +150,17 @@ export default function RoomsPage() {
           <section className="border-b border-[var(--border-subtle)] bg-[var(--bg-canvas)] py-8 sm:py-10 transition-colors">
             <div className="max-w-[1280px] mx-auto px-4 sm:px-6">
               <h1 className="font-syne font-bold text-2xl sm:text-4xl text-[var(--text-primary)] tracking-tight">
-                Listening Lounges
+                Rooms
+                <span className="sr-only">Listening Lounges</span>
               </h1>
               <p className="mt-2 text-xs sm:text-sm text-[var(--text-muted)] max-w-xl">
                 Join real-time communal music rooms, share playback with friends, or launch curated starter collections.
               </p>
 
               {/* Search & Filter Row */}
-              <div className="mt-6 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              <div className="mt-6 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full max-w-full min-w-0">
                 {/* Search Input Bar */}
-                <div className="relative flex-1 max-w-md">
+                <div className="relative flex-1 max-w-md w-full">
                   <Search className="w-4 h-4 text-[var(--text-muted)] absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
@@ -180,7 +181,7 @@ export default function RoomsPage() {
                 </div>
 
                 {/* Category Filter Chips */}
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 custom-scrollbar">
+                <div className="flex items-center gap-2 w-full max-w-full min-w-0 overflow-x-auto pb-2 no-scrollbar touch-pan-x">
                   {CATEGORIES.map((cat) => {
                     const isActive = activeCategory === cat;
                     return (
@@ -260,7 +261,7 @@ export default function RoomsPage() {
 
             {/* Cards Grid */}
             {!loading && !error && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 w-full max-w-full min-w-0">
                 {/* 1. Filtered Live Rooms */}
                 {filteredRooms.map((room) => {
                   const coverUrl = getLiveRoomCover(room);
@@ -268,20 +269,20 @@ export default function RoomsPage() {
                   return (
                     <article
                       key={room.id}
-                      className="rounded-xl bg-[var(--bg-panel)] border border-[var(--border-subtle)] p-4 flex flex-col justify-between hover:border-[#8B5CF6]/40 transition-colors shadow-sm"
+                      className="w-full max-w-full min-w-0 overflow-hidden box-border rounded-xl bg-[var(--bg-panel)] border border-[var(--border-subtle)] p-4 flex flex-col justify-between hover:border-[#8B5CF6]/40 transition-colors shadow-sm"
                     >
                       <div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-medium text-[#10B981] flex items-center gap-1.5">
+                        <div className="flex items-center justify-between min-w-0 gap-2">
+                          <span className="text-[11px] font-medium text-[#10B981] flex items-center gap-1.5 font-mono shrink-0">
                             <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
                             LIVE · {room.listenerCount} listening
                           </span>
-                          <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-[var(--bg-recessed)] text-[var(--text-muted)] border border-[var(--border-subtle)]">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-[var(--bg-recessed)] text-[var(--text-muted)] border border-[var(--border-subtle)] shrink-0">
                             {room.vibeTag || 'Live Room'}
                           </span>
                         </div>
 
-                        <div className="mt-3.5 flex items-center gap-3.5">
+                        <div className="mt-3.5 flex items-center gap-3.5 min-w-0 w-full overflow-hidden">
                           {/* Tactile Vinyl Sleeve Preview */}
                           <div className="relative w-[72px] h-[72px] shrink-0">
                             <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-14 h-14 rounded-full bg-[#0E0E13] border border-[#2D2945] flex items-center justify-center shadow-md">
@@ -318,7 +319,7 @@ export default function RoomsPage() {
                             </div>
                           </div>
 
-                          <div className="flex-1 min-w-0">
+                          <div className="flex-1 min-w-0 overflow-hidden">
                             <h3 className="font-syne font-bold text-sm text-[var(--text-primary)] truncate">
                               {room.title}
                             </h3>
@@ -329,16 +330,16 @@ export default function RoomsPage() {
                         </div>
                       </div>
 
-                      <div className="mt-4 pt-3 border-t border-[var(--border-subtle)] flex items-center justify-between gap-2">
-                        <span className="text-[11px] text-[var(--text-muted)] flex items-center gap-1">
+                      <div className="mt-4 pt-3 border-t border-[var(--border-subtle)] flex items-center justify-between gap-2 min-w-0">
+                        <span className="text-[11px] text-[var(--text-muted)] flex items-center gap-1 shrink-0">
                           <Users className="w-3 h-3" />
                           <span>{room.listenerCount} in room</span>
                         </span>
                         <Link
                           href={`/room/${room.slug}`}
-                          className="h-8 px-3.5 rounded-md bg-[#111115] text-white dark:bg-[#F4F4F6] dark:text-[#111115] hover:opacity-90 font-medium text-xs flex items-center justify-center transition-opacity"
+                          className="h-8 px-3.5 rounded-md bg-[#111115] text-white dark:bg-[#F4F4F6] dark:text-[#111115] hover:opacity-90 font-medium text-xs flex items-center justify-center transition-opacity shrink-0"
                         >
-                          Tune In →
+                          Tune In
                         </Link>
                       </div>
                     </article>
@@ -353,20 +354,19 @@ export default function RoomsPage() {
                   return (
                     <article
                       key={tape.id}
-                      className="rounded-xl bg-[var(--bg-panel)] border border-[var(--border-subtle)] p-4 flex flex-col justify-between hover:border-[#8B5CF6]/40 transition-colors shadow-sm"
+                      className="w-full max-w-full min-w-0 overflow-hidden box-border rounded-xl bg-[var(--bg-panel)] border border-[var(--border-subtle)] p-4 flex flex-col justify-between hover:border-[#8B5CF6]/40 transition-colors shadow-sm"
                     >
                       <div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-medium text-[#8B5CF6] flex items-center gap-1.5">
-                            <Disc className="w-3.5 h-3.5 shrink-0" />
-                            STARTER TAPE · {tape.tracks.length} tracks
+                        <div className="flex items-center justify-between min-w-0 gap-2">
+                          <span className="text-[11px] text-[var(--text-muted)] font-mono truncate flex-1 min-w-0">
+                            1. {tape.tracks[0]?.title} · 2. {tape.tracks[1]?.title}
                           </span>
-                          <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-[var(--bg-recessed)] text-[var(--text-muted)] border border-[var(--border-subtle)]">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-[var(--bg-recessed)] text-[var(--text-muted)] border border-[var(--border-subtle)] shrink-0">
                             {tape.mood}
                           </span>
                         </div>
 
-                        <div className="mt-3.5 flex items-center gap-3.5">
+                        <div className="mt-3.5 flex items-center gap-3.5 min-w-0 w-full overflow-hidden">
                           {/* Tactile Vinyl Sleeve Preview */}
                           <div className="relative w-[72px] h-[72px] shrink-0">
                             <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-14 h-14 rounded-full bg-[#0E0E13] border border-[#2D2945] flex items-center justify-center shadow-md">
@@ -386,7 +386,7 @@ export default function RoomsPage() {
                             </div>
                           </div>
 
-                          <div className="flex-1 min-w-0">
+                          <div className="flex-1 min-w-0 overflow-hidden">
                             <h3 className="font-syne font-bold text-sm text-[var(--text-primary)] truncate">
                               {tape.title}
                             </h3>
@@ -397,23 +397,23 @@ export default function RoomsPage() {
                         </div>
                       </div>
 
-                      <div className="mt-4 pt-3 border-t border-[var(--border-subtle)] flex items-center justify-between gap-2">
-                        <span className="text-[11px] text-[var(--text-muted)]">
-                          {tape.totalDurationLabel}
+                      <div className="mt-4 pt-3 border-t border-[var(--border-subtle)] flex items-center justify-between gap-2 min-w-0">
+                        <span className="text-[11px] text-[var(--text-muted)] truncate min-w-0 font-mono">
+                          {tape.tracks.length} tracks ({tape.totalDurationLabel?.match(/\d+m/)?.[0] || '35m'})
                         </span>
                         <button
                           type="button"
                           onClick={() => handleLaunchTape(tape)}
                           disabled={Boolean(launchingTapeId)}
-                          className="h-8 px-3.5 rounded-md bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[#8B5CF6]/40 text-[var(--text-primary)] font-medium text-xs flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50"
+                          className="h-8 px-3.5 rounded-md bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[#8B5CF6]/40 text-[var(--text-primary)] font-medium text-xs flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50 shrink-0"
                         >
                           {isThisTapeLaunching ? (
                             <>
                               <Loader2 className="w-3 h-3 animate-spin text-[#8B5CF6]" />
-                              <span>Launching...</span>
+                              <span>Opening...</span>
                             </>
                           ) : (
-                            <span>▶ Launch Room</span>
+                            <span>Open Room</span>
                           )}
                         </button>
                       </div>

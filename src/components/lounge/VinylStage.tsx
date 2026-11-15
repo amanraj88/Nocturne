@@ -57,6 +57,7 @@ export const VinylStage: React.FC = () => {
   const [likeBurst, setLikeBurst] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [ytErrorNotice, setYtErrorNotice] = useState<string | null>(null);
+  const [showTapToUnmute, setShowTapToUnmute] = useState(false);
 
   const stageRootRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -381,9 +382,39 @@ export const VinylStage: React.FC = () => {
       } else {
         player.unMute?.();
         player.setVolume?.(Math.round(volume));
+        setShowTapToUnmute(false);
       }
     } catch (e) {}
   }, [volume, isMuted]);
+
+  // Mobile tab-return audio recovery: on visible, seek to live playhead, unmute & resume
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        const player = ytPlayerInstanceRef.current || (typeof window !== 'undefined' ? (window as any).__nocturneYtPlayer : null);
+        if (player && isPlayingRef.current) {
+          try {
+            const targetSec = progressSecondsRef.current || 0;
+            player.seekTo?.(targetSec, true);
+            player.unMute?.();
+            player.setVolume?.(Math.round(volumeRef.current || 80));
+            player.playVideo?.();
+          } catch (e) {}
+
+          setTimeout(() => {
+            try {
+              if (player.isMuted?.() || player.getPlayerState?.() !== window.YT?.PlayerState?.PLAYING) {
+                setShowTapToUnmute(true);
+              }
+            } catch (e) {}
+          }, 400);
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
 
   const activeArtworkId = currentTrack?.artworkId || currentRoom.artworkId || 'noc-01';
   const displayTitle = currentTrack?.title || 'No track playing';
@@ -472,7 +503,7 @@ export const VinylStage: React.FC = () => {
 
         {/* Artwork Mode Assembly: Vinyl Sleeve + Peeking Grooved Disc */}
         {viewMode === 'artwork' && (
-          <div className="relative z-10 flex items-center justify-center -translate-x-3 sm:-translate-x-4">
+          <div className={`relative z-10 flex items-center justify-center mx-auto ${currentTrack ? '-translate-x-3 sm:-translate-x-4' : ''}`}>
             {/* Peeking Grooved Vinyl Disc (spins smoothly when isPlaying) */}
             <div
               className={`absolute w-[140px] h-[140px] sm:w-[240px] sm:h-[240px] lg:w-[340px] lg:h-[340px] rounded-full vinyl-grooves border border-white/[0.08] flex items-center justify-center translate-x-[45px] sm:translate-x-[70px] lg:translate-x-[90px] shadow-2xl z-0 transition-transform duration-500`}
@@ -528,6 +559,30 @@ export const VinylStage: React.FC = () => {
           </div>
         )}
 
+        {/* Floating Tap to Unmute Pill */}
+        {showTapToUnmute && (
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40">
+            <button
+              type="button"
+              onClick={() => {
+                const player = ytPlayerInstanceRef.current || (typeof window !== 'undefined' ? (window as any).__nocturneYtPlayer : null);
+                if (player) {
+                  try {
+                    player.unMute?.();
+                    player.setVolume?.(Math.round(volumeRef.current || 80));
+                    player.playVideo?.();
+                  } catch (e) {}
+                }
+                setShowTapToUnmute(false);
+              }}
+              className="px-4 py-2 bg-[#F43F5E] hover:bg-[#E11D48] text-white text-xs font-semibold rounded-full shadow-xl flex items-center gap-2 animate-bounce transition-all"
+            >
+              <Volume2 className="w-3.5 h-3.5" />
+              Tap to unmute
+            </button>
+          </div>
+        )}
+
         {/* Floating Heart Burst Effect */}
         {likeBurst && (
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none animate-ping">
@@ -542,8 +597,8 @@ export const VinylStage: React.FC = () => {
       <div className="w-full max-w-[840px] mx-auto border-t border-[var(--border-subtle)] px-3 sm:px-6 py-2 sm:py-3 flex flex-col justify-between gap-1 sm:gap-2 shrink-0 z-20 bg-[var(--bg-canvas)]/95">
         {/* Tier 1 (44px): Track Identity & Mode Switcher */}
         <div className="h-10 flex items-center justify-between gap-2 sm:gap-3">
-          <div className="min-w-0 pr-1 sm:pr-2">
-            <h2 className="font-syne text-[14px] sm:text-[18px] font-bold text-[var(--text-primary)] tracking-[-0.02em] leading-tight truncate">
+          <div className="min-w-0 flex-1 overflow-hidden pr-1 sm:pr-2">
+            <h2 className="font-syne text-[14px] sm:text-[18px] font-bold text-[var(--text-primary)] tracking-[-0.02em] leading-tight truncate min-w-0 flex-1">
               {displayTitle}
             </h2>
             <p className="text-[11px] sm:text-xs text-[var(--text-muted)] truncate mt-0.5 font-inter">
@@ -582,99 +637,59 @@ export const VinylStage: React.FC = () => {
               </button>
             </div>
 
-            {/* Heart Reaction Button */}
-            <button
-              type="button"
-              onClick={() => {
-                setIsLiked(!isLiked);
-                setLikeBurst(true);
-                setTimeout(() => setLikeBurst(false), 900);
-                triggerReaction('❤️');
-              }}
-              className={`w-9 h-9 sm:w-8 sm:h-8 rounded-lg border border-[var(--border-subtle)] flex items-center justify-center transition-all ${
-                isLiked
-                  ? 'bg-rose-500/15 border-rose-500/30 text-[#F43F5E]'
-                  : 'bg-[var(--bg-recessed)] text-[var(--text-muted)] hover:text-[#F43F5E] hover:border-rose-500/30'
-              }`}
-              title="React Heart"
-            >
-              <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
-            </button>
+            {/* Heart Reaction Button (Hidden when Idle) */}
+            {currentTrack && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsLiked(!isLiked);
+                  setLikeBurst(true);
+                  setTimeout(() => setLikeBurst(false), 900);
+                  triggerReaction('❤️');
+                }}
+                className={`w-9 h-9 sm:w-8 sm:h-8 rounded-lg border border-[var(--border-subtle)] flex items-center justify-center transition-all ${
+                  isLiked
+                    ? 'bg-rose-500/15 border-rose-500/30 text-[#F43F5E]'
+                    : 'bg-[var(--bg-recessed)] text-[var(--text-muted)] hover:text-[#F43F5E] hover:border-rose-500/30'
+                }`}
+                title="React Heart"
+              >
+                <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
+              </button>
+            )}
 
-            {/* Fullscreen Toggle Button */}
-            <button
-              type="button"
-              onClick={toggleFullscreen}
-              className="w-9 h-9 sm:w-8 sm:h-8 rounded-lg border border-[var(--border-subtle)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-[var(--bg-recessed)] transition-all"
-              title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen Stage'}
-            >
-              {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
-            </button>
+            {/* Fullscreen Toggle Button (Hidden when Idle) */}
+            {currentTrack && (
+              <button
+                type="button"
+                onClick={toggleFullscreen}
+                className="w-9 h-9 sm:w-8 sm:h-8 rounded-lg border border-[var(--border-subtle)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-[var(--bg-recessed)] transition-all"
+                title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen Stage'}
+              >
+                {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Tier 2 (52px): Flowing Ribbon Waveform Scrubber & Monospace Timestamps */}
+        {/* Tier 2 (52px): Flat Progress Scrubber & Monospace Timestamps */}
         <div className="h-9 sm:h-10 flex items-center gap-2 sm:gap-3">
           <span className="font-mono text-[11px] sm:text-xs text-[var(--text-muted)] tabular-nums shrink-0 w-9 sm:w-11">
             {formatTime(progressSeconds)}
           </span>
 
-          {/* Flowing Ribbon Waveform Container */}
+          {/* Straight Horizontal Timeline Scrubber */}
           <div
             onClick={handleWaveformSeek}
-            className={`flex-1 relative h-8 flex items-center group ${isHost ? 'cursor-pointer' : 'cursor-default'}`}
+            className={`flex-1 relative h-6 flex items-center group ${isHost && currentTrack ? 'cursor-pointer' : 'cursor-default'}`}
             title={isHost ? 'Seek playback' : 'Host controls playback position'}
           >
-            <svg
-              className="w-full h-8 overflow-visible"
-              preserveAspectRatio="none"
-              viewBox="0 0 600 32"
-            >
-              {/* Background Ambient Wave Ribbon (Remaining) */}
-              <path
-                d="M0,16 C40,4 80,28 120,16 C160,4 200,28 240,16 C280,4 320,28 360,16 C400,4 440,28 480,16 C520,4 560,28 600,16"
-                fill="none"
-                stroke="rgba(255, 255, 255, 0.12)"
-                strokeLinecap="round"
-                strokeWidth="2.5"
+            <div className="w-full h-1.5 rounded-full bg-[var(--border-subtle)] relative overflow-hidden">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-[#8B5CF6] via-[#EC4899] to-[#F43F5E] transition-[width] duration-150 ease-linear"
+                style={{ width: `${progressPercent}%` }}
               />
-              {/* Subtle Harmonic Ribbon (Remaining) */}
-              <path
-                d="M0,16 C50,26 90,8 140,16 C190,26 230,8 280,16 C330,26 370,8 420,16 C470,26 510,8 560,16 C580,20 590,14 600,16"
-                fill="none"
-                stroke="rgba(255, 255, 255, 0.05)"
-                strokeWidth="1.5"
-              />
-              {/* Active Played Harmonic Ribbon in Violet */}
-              <path
-                d={`M0,16 C50,26 90,8 140,16 C190,26 230,8 280,16 C330,26 370,8 420,16 C470,26 510,8 560,16 C580,20 590,14 600,16`}
-                fill="none"
-                stroke="#8B5CF6"
-                strokeOpacity="0.5"
-                strokeWidth="2"
-                strokeDasharray="600"
-                strokeDashoffset={600 - (600 * progressPercent) / 100}
-                className="transition-[stroke-dashoffset] duration-150 ease-linear"
-              />
-              {/* Active Primary Wave Ribbon in Violet & Coral */}
-              <path
-                d="M0,16 C40,4 80,28 120,16 C160,4 200,28 240,16 C280,4 320,28 360,16 C400,4 440,28 480,16 C520,4 560,28 600,16"
-                fill="none"
-                stroke="url(#waveform-coral-gradient)"
-                strokeLinecap="round"
-                strokeWidth="3"
-                strokeDasharray="600"
-                strokeDashoffset={600 - (600 * progressPercent) / 100}
-                className="transition-[stroke-dashoffset] duration-150 ease-linear"
-              />
-              <defs>
-                <linearGradient id="waveform-coral-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="#8B5CF6" />
-                  <stop offset="70%" stopColor="#EC4899" />
-                  <stop offset="100%" stopColor="#F43F5E" />
-                </linearGradient>
-              </defs>
-            </svg>
+            </div>
 
             {/* Playhead Scrub Dot */}
             <div
@@ -693,7 +708,7 @@ export const VinylStage: React.FC = () => {
         {/* Tier 3 (44px): Role-Aware Transport Controls, Honest Sync Status & Elastic Volume Slider */}
         <div className="h-11 flex items-center justify-between gap-1 sm:gap-2">
           {/* Left: Transport Cluster */}
-          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+          <div className={`flex items-center gap-1.5 sm:gap-3 shrink-0 ${!currentTrack ? 'opacity-35 pointer-events-none' : ''}`}>
             {/* Restart / Prev Button */}
             <button
               type="button"
@@ -702,7 +717,7 @@ export const VinylStage: React.FC = () => {
                   seekTo(0, true);
                 }
               }}
-              disabled={!isHost}
+              disabled={!isHost || !currentTrack}
               className="w-9 h-9 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] disabled:opacity-40 disabled:hover:text-[var(--text-muted)] transition-colors"
               title={isHost ? 'Restart Track' : 'Host controls playback'}
             >
@@ -717,7 +732,7 @@ export const VinylStage: React.FC = () => {
                   togglePlay();
                 }
               }}
-              disabled={!isHost}
+              disabled={!isHost || !currentTrack}
               className="w-[42px] h-[42px] rounded-full bg-[#F43F5E] hover:bg-[#E11D48] text-white flex items-center justify-center transition-all active:scale-95 shadow-none disabled:opacity-50 shrink-0"
               title={isHost ? (isPlaying ? 'Pause' : 'Play') : 'Host controls playback'}
             >
@@ -736,7 +751,7 @@ export const VinylStage: React.FC = () => {
                   skipTrack(true);
                 }
               }}
-              disabled={!isHost}
+              disabled={!isHost || !currentTrack}
               className="w-9 h-9 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] disabled:opacity-40 disabled:hover:text-[var(--text-muted)] transition-colors"
               title={isHost ? 'Skip Track' : 'Host controls playback'}
             >
@@ -747,7 +762,12 @@ export const VinylStage: React.FC = () => {
           {/* Right: Honest Sync Indicator + Local Elastic Volume Slider */}
           <div className="flex items-center gap-1.5 sm:gap-5 min-w-0">
             {/* Honest Sync Indicator (Zero fake ms telemetry) */}
-            {currentRoom?.host?.isListening === false ? (
+            {!currentTrack ? (
+              <span className="inline-flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs font-mono text-[var(--text-muted)] shrink-0" title="No track playing">
+                <span className="w-1.5 h-1.5 rounded-full bg-zinc-500" />
+                Idle
+              </span>
+            ) : currentRoom?.host?.isListening === false ? (
               <span className="inline-flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs font-mono text-amber-400/90 shrink-0" title="Host is currently disconnected">
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
                 <span className="hidden xs:inline">Host Offline</span>

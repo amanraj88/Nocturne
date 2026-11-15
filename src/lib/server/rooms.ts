@@ -287,8 +287,9 @@ class RoomManager extends EventEmitter {
         {
           id: `msg-${Date.now()}`,
           user: hostUser,
-          text: `Lounge "${newRoom.title}" opened. Share the URL to invite listeners.`,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          text: 'Room started. Copy the invite link above to listen with friends.',
+          timestamp: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
           isSystem: true,
         },
       ],

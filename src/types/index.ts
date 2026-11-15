@@ -78,6 +78,7 @@ export interface ChatMessage {
   user: UserProfile;
   text: string;
   timestamp: string;
+  createdAt?: string;
   isSystem?: boolean;
   reactionEmoji?: string;
 }

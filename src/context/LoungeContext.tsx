@@ -99,7 +99,7 @@ const EMPTY_ROOM: Room = {
 export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Persistent anonymous client identity for room participation (deterministic SSR defaults)
   const [clientId, setClientId] = useState<string>('usr-guest');
-  const [clientName, setClientName] = useState<string>('Midnight Owl');
+  const [clientName, setClientName] = useState<string>('Guest 101');
   const [lastVisitedRoom, setLastVisitedRoom] = useState<{
     id: string;
     slug: string;
@@ -117,19 +117,9 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
       setClientId(id);
 
-      const NOCTURNAL_NAMES = [
-        'Midnight Owl',
-        'Velvet Static',
-        'Neon Drifter',
-        'Quiet Satellite',
-        'Lunar Echo',
-        'Subtle Vinyl',
-        'Amber Synth',
-        'Obsidian Wave',
-      ];
       let name = sessionStorage.getItem('nocturne_client_name');
       if (!name) {
-        name = NOCTURNAL_NAMES[Math.floor(Math.random() * NOCTURNAL_NAMES.length)];
+        name = `Guest ${100 + Math.floor(Math.random() * 900)}`;
         sessionStorage.setItem('nocturne_client_name', name);
       }
       setClientName(name);
@@ -2402,7 +2392,7 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
       const newMsgId = `c-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
       const isHost = currentRoomRef.current.host?.id === session.user.id;
-      const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const nowIso = new Date().toISOString();
 
       const newMsg: ChatMessage = {
         id: newMsgId,
@@ -2414,7 +2404,8 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           joinedAt: 'Just now',
         },
         text: text.trim(),
-        timestamp,
+        timestamp: nowIso,
+        createdAt: nowIso,
       };
 
       // STRICT PERSISTENCE: Write to PostgreSQL before treating as sent
@@ -2447,6 +2438,7 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
     } else {
       // Local development mode fallback
+      const nowIso = new Date().toISOString();
       const newMsg: ChatMessage = {
         id: `c-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
         user: {
@@ -2457,7 +2449,8 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           joinedAt: 'Just now',
         },
         text: text.trim(),
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        timestamp: nowIso,
+        createdAt: nowIso,
       };
       setChatMessages((prev) => [...prev, newMsg]);
       dispatchServerAction({ type: 'CHAT_MESSAGE', message: newMsg });

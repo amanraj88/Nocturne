@@ -109,16 +109,8 @@ export default function RoomPage() {
     }
   };
 
-  const pageTitle =
-    roomLoadState === 'ready'
-      ? `${currentRoom.title || 'Listening Lounge'} • NOCTURNE`
-      : roomLoadState === 'ended'
-      ? 'Session ended • NOCTURNE'
-      : roomLoadState === 'not-found'
-      ? 'Room not found • NOCTURNE'
-      : roomLoadState === 'error'
-      ? 'Room unavailable • NOCTURNE'
-      : 'Loading lounge • NOCTURNE';
+  const roomName = (currentRoom as any)?.name || currentRoom?.title;
+  const pageTitle = roomName ? `${roomName} — NOCTURNE` : 'Room — NOCTURNE';
 
   // Build full participant list with unique IDs
   const allParticipants = React.useMemo(() => {
@@ -209,32 +201,26 @@ export default function RoomPage() {
               </div>
             ) : roomLoadState === 'not-found' ? (
               <div>
-                <p className="text-xs font-mono font-semibold text-[#F43F5E] uppercase tracking-wider">
-                  Room not found
-                </p>
                 <h1 className="mt-3 font-syne text-2xl font-bold text-[var(--text-primary)]">
-                  Lounge unavailable
+                  Room not found
                 </h1>
                 <p className="mt-2 text-sm text-[var(--text-muted)]">
-                  The link may have expired or this room no longer exists.
+                  This room has ended or the link is invalid.
                 </p>
                 <Link
                   href="/rooms"
                   className="mt-6 inline-flex rounded-lg bg-[#8B5CF6] hover:bg-[#7C3AED] px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-purple-500/25 transition-all"
                 >
-                  Browse lounges
+                  Back to Rooms
                 </Link>
               </div>
             ) : (
               <div>
-                <p className="text-xs font-mono font-semibold text-[#F43F5E] uppercase tracking-wider">
-                  Connection Notice
-                </p>
                 <h1 className="mt-3 font-syne text-2xl font-bold text-[var(--text-primary)]">
-                  Couldn’t reach this lounge
+                  Room not found
                 </h1>
                 <p className="mt-2 text-sm text-[var(--text-muted)]">
-                  Check your network connection and try again.
+                  This room has ended or the link is invalid.
                 </p>
                 <div className="mt-6 flex flex-wrap justify-center gap-3">
                   <button
@@ -248,7 +234,7 @@ export default function RoomPage() {
                     href="/rooms"
                     className="rounded-lg border border-[var(--border-subtle)] px-6 py-2.5 text-sm font-medium text-[var(--text-primary)] hover:border-[#8B5CF6]/50 transition-colors"
                   >
-                    Browse lounges
+                    Back to Rooms
                   </Link>
                 </div>
               </div>
@@ -256,7 +242,7 @@ export default function RoomPage() {
           </section>
         </main>
       ) : (
-        <div className="flex flex-col w-full h-[100dvh] overflow-hidden bg-[var(--bg-canvas)] text-[var(--text-primary)] select-none">
+        <div className="flex flex-col w-full max-w-full h-[100dvh] max-h-[100dvh] overflow-hidden bg-[var(--bg-canvas)] text-[var(--text-primary)] select-none">
           {/* ============================================================== */}
           {/* 1. DEDICATED ROOM TOP BAR (48px mobile / 52px desktop)         */}
           {/* ============================================================== */}
@@ -465,14 +451,14 @@ export default function RoomPage() {
           {/* 2. 2-COLUMN MAIN WORKSPACE (Desktop Locked & Mobile Responsive) */}
           {/* Left: Music Stage (flex-1) | Right: Fixed 370px Social Dock     */}
           {/* ============================================================== */}
-          <main className="flex-1 w-full max-w-[1600px] mx-auto flex flex-col lg:flex-row overflow-hidden h-[calc(100dvh-48px)] lg:h-[calc(100dvh-52px)]">
+          <main className="flex-1 min-h-0 w-full max-w-[1600px] mx-auto flex flex-col lg:flex-row overflow-hidden h-[calc(100dvh-48px)] lg:h-[calc(100dvh-52px)]">
             {/* Left Column — Flexible Music Stage (Upper ~45% on mobile, flex-1 on desktop) */}
             <section className="w-full lg:flex-1 shrink-0 lg:shrink min-w-0 flex flex-col justify-between relative overflow-hidden bg-[var(--bg-canvas)]">
               <VinylStage />
             </section>
 
             {/* Right Column — Fixed 370px Social Dock (Lower ~55% on mobile, fixed 370px on desktop) */}
-            <aside className="w-full lg:w-[370px] flex-1 lg:flex-initial lg:h-full shrink-0 min-h-0 bg-[var(--bg-panel)] border-t lg:border-t-0 lg:border-l border-[var(--border-subtle)] flex flex-col overflow-hidden relative">
+            <aside className="w-full lg:w-[370px] flex-1 min-h-0 min-w-0 lg:flex-initial lg:h-full shrink-0 bg-[var(--bg-panel)] border-t lg:border-t-0 lg:border-l border-[var(--border-subtle)] flex flex-col overflow-hidden relative">
               <QueueDock />
               <SocialDock />
             </aside>

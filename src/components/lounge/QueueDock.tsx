@@ -242,9 +242,9 @@ export const QueueDock: React.FC = () => {
               return (
                 <div
                   key={track.id}
-                  className="px-3 py-2 flex items-center justify-between gap-2.5 hover:bg-[var(--bg-recessed)]/60 transition-colors group"
+                  className="px-3 py-2 flex items-center justify-between gap-2.5 hover:bg-[var(--bg-recessed)]/60 transition-colors group min-w-0 w-full overflow-hidden"
                 >
-                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1 overflow-hidden">
                     {/* Monospace index */}
                     <span className="font-mono text-[11px] text-[var(--text-muted)] w-5 shrink-0 text-center">
                       {String(idx + 1).padStart(2, '0')}
@@ -266,11 +266,11 @@ export const QueueDock: React.FC = () => {
                     </div>
 
                     {/* Title & Curator */}
-                    <div className="min-w-0 flex-1">
-                      <h4 className="text-xs font-medium text-[var(--text-primary)] truncate">
+                    <div className="min-w-0 flex-1 overflow-hidden">
+                      <h4 className="text-xs font-medium text-[var(--text-primary)] truncate min-w-0 flex-1">
                         {track.title}
                       </h4>
-                      <p className="text-[10px] text-[var(--text-muted)] truncate mt-0.5">
+                      <p className="text-[10px] text-[var(--text-muted)] truncate mt-0.5 min-w-0">
                         Added by {track.addedBy?.name || 'Curator'}
                       </p>
                     </div>
@@ -307,13 +307,13 @@ export const QueueDock: React.FC = () => {
       {/* ================================================================== */}
       <div
         onClick={() => setIsMobileDrawerOpen(true)}
-        className="lg:hidden h-10 px-3.5 flex items-center justify-between cursor-pointer bg-[var(--bg-panel)] border-b border-[var(--border-subtle)] hover:bg-[var(--bg-elevated)]/60 transition-colors select-none shrink-0"
+        className="lg:hidden h-10 px-3.5 flex items-center justify-between cursor-pointer bg-[var(--bg-panel)] border-b border-[var(--border-subtle)] hover:bg-[var(--bg-elevated)]/60 transition-colors select-none shrink-0 w-full max-w-full min-w-0 overflow-hidden"
         title="Open Queue & Add Music"
       >
-        <span className="flex items-center gap-1.5 font-mono text-xs text-[var(--text-primary)]">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#8B5CF6]" />
-          <span>
-            Up Next · {upcomingQueue.length} {upcomingQueue.length === 1 ? 'track' : 'tracks'}
+        <span className="flex items-center gap-1.5 font-mono text-xs text-[var(--text-primary)] min-w-0 overflow-hidden">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#8B5CF6] shrink-0" />
+          <span className="truncate min-w-0">
+            {upcomingQueue.length === 0 ? 'Queue empty' : `Up Next · ${upcomingQueue.length} ${upcomingQueue.length === 1 ? 'track' : 'tracks'}`}
           </span>
         </span>
 
@@ -323,9 +323,9 @@ export const QueueDock: React.FC = () => {
             e.stopPropagation();
             setIsMobileDrawerOpen(true);
           }}
-          className="text-xs font-mono font-medium text-[#8B5CF6] hover:text-[#7C3AED] flex items-center gap-1 transition-colors"
+          className="text-xs font-mono font-medium text-[#8B5CF6] hover:text-[#7C3AED] flex items-center gap-1 transition-colors shrink-0 ml-2"
         >
-          <span>▲ Queue / + Add</span>
+          <span>{upcomingQueue.length === 0 ? '+ Add a song' : `Up Next (${upcomingQueue.length})`}</span>
         </button>
       </div>
 
@@ -429,9 +429,9 @@ export const QueueDock: React.FC = () => {
                   return (
                     <div
                       key={track.id}
-                      className="px-3 py-2.5 flex items-center justify-between gap-2.5 hover:bg-[var(--bg-recessed)]/60 rounded-lg transition-colors group"
+                      className="px-3 py-2.5 flex items-center justify-between gap-2.5 hover:bg-[var(--bg-recessed)]/60 rounded-lg transition-colors group min-w-0 w-full overflow-hidden"
                     >
-                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1 overflow-hidden">
                         <span className="font-mono text-xs text-[var(--text-muted)] w-5 shrink-0 text-center">
                           {String(idx + 1).padStart(2, '0')}
                         </span>
@@ -448,11 +448,11 @@ export const QueueDock: React.FC = () => {
                             </div>
                           )}
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <h4 className="text-xs font-medium text-[var(--text-primary)] truncate">
+                        <div className="min-w-0 flex-1 overflow-hidden">
+                          <h4 className="text-xs font-medium text-[var(--text-primary)] truncate min-w-0 flex-1">
                             {track.title}
                           </h4>
-                          <p className="text-[10px] text-[var(--text-muted)] truncate mt-0.5">
+                          <p className="text-[10px] text-[var(--text-muted)] truncate mt-0.5 min-w-0">
                             Added by {track.addedBy?.name || 'Curator'}
                           </p>
                         </div>

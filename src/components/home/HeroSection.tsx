@@ -78,10 +78,10 @@ export const HeroSection: React.FC = () => {
         {/* ============================================================== */}
         <div className="lg:w-[58%] flex flex-col justify-center">
           <h1 className="font-syne font-bold text-3xl sm:text-5xl tracking-[-0.02em] text-[var(--text-primary)] leading-[1.15]">
-            Music hits different together.
+            Listen to YouTube together, in real time.
           </h1>
           <p className="mt-3 text-sm sm:text-base text-[var(--text-muted)] max-w-xl leading-relaxed">
-            Step into a live listening room, drop tracks into a shared FIFO queue, and listen in lockstep with friends.
+            Start a room, paste any YouTube link or playlist into the queue, and everyone hears the exact same second.
           </p>
 
           {/* Action Row: Stack full-width on mobile (< sm), inline on desktop */}
@@ -93,26 +93,26 @@ export const HeroSection: React.FC = () => {
               className="h-11 px-5 w-full sm:w-auto rounded-lg bg-[#F43F5E] hover:bg-[#E11D48] text-white font-medium text-sm inline-flex items-center justify-center gap-2 transition-colors shrink-0 shadow-none active:translate-y-px"
             >
               <Plus className="w-4 h-4 stroke-[2.5]" />
-              <span>Create a Room</span>
+              <span>Start a Room</span>
             </button>
 
             {/* Recessed Inline Join Capsule */}
             <form
               onSubmit={handleJoinSubmit}
-              className="h-11 w-full sm:flex-1 sm:max-w-md rounded-lg bg-[var(--bg-recessed)] border border-[var(--border-subtle)] focus-within:border-[#8B5CF6]/50 p-1.5 pl-3 flex items-center gap-2 transition-colors"
+              className="h-11 max-sm:h-12 w-full max-sm:w-full sm:flex-1 sm:max-w-md rounded-lg bg-[var(--bg-recessed)] border border-[var(--border-subtle)] focus-within:border-[#8B5CF6]/50 p-1.5 max-sm:p-1.5 pl-3 flex items-center gap-2 transition-colors"
             >
               <input
                 type="text"
                 value={joinInput}
                 onChange={(e) => setJoinInput(e.target.value)}
-                placeholder="Enter room link or code..."
-                className="flex-1 min-w-0 bg-transparent text-xs sm:text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none"
+                placeholder="Paste room link or code"
+                className="flex-1 min-w-0 bg-transparent border-0 outline-none focus:ring-0 text-xs sm:text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] p-0"
               />
               <button
                 type="submit"
                 className="h-8 px-3.5 rounded-md bg-[var(--bg-elevated)] hover:bg-[#8B5CF6] text-[var(--text-primary)] hover:text-white text-xs font-medium transition-colors shrink-0"
               >
-                Join →
+                Join
               </button>
             </form>
           </div>
@@ -135,7 +135,7 @@ export const HeroSection: React.FC = () => {
         {/* ============================================================== */}
         {/* Right Zone (lg:w-[42%]) — Featured Session Spotlight Card     */}
         {/* ============================================================== */}
-        <div className="lg:w-[42%] flex items-center">
+        <div className="hidden lg:flex lg:w-[42%] items-center">
           <div className="w-full rounded-xl bg-[var(--bg-panel)] border border-[var(--border-subtle)] p-5 shadow-sm transition-colors">
             {isMounted && spotlightRoom ? (() => {
               const room = spotlightRoom;
@@ -145,7 +145,7 @@ export const HeroSection: React.FC = () => {
                 /* Live Room Spotlight */
                 <div className="flex flex-col gap-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-medium text-[#10B981] flex items-center gap-1.5">
+                    <span className="text-[11px] font-medium text-[#10B981] flex items-center gap-1.5 font-mono">
                       <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
                       LIVE · {room.listenerCount} listening
                     </span>
@@ -203,9 +203,9 @@ export const HeroSection: React.FC = () => {
 
                   <Link
                     href={`/room/${room.slug}`}
-                    className="w-full h-10 rounded-lg bg-[#F4F4F6] text-[#111115] dark:bg-[#F4F4F6] dark:text-[#111115] hover:opacity-90 font-medium text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-opacity"
+                    className="w-full h-10 rounded-lg bg-[#F4F4F6] text-[#111115] dark:bg-[#F4F4F6] dark:text-[#111115] hover:opacity-90 font-medium text-xs sm:text-sm flex items-center justify-center transition-opacity"
                   >
-                    <span>Tune In →</span>
+                    <span>Tune In</span>
                   </Link>
                 </div>
               );
@@ -213,9 +213,9 @@ export const HeroSection: React.FC = () => {
               /* Starter Tape #1 Spotlight (when 0 active live rooms) */
               <div className="flex flex-col gap-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-medium text-[#8B5CF6] flex items-center gap-1.5">
+                  <span className="text-[11px] font-medium text-[#8B5CF6] flex items-center gap-1.5 font-mono">
                     <Disc className="w-3.5 h-3.5 shrink-0" />
-                    STARTER TAPE · {defaultTape.tracks.length} tracks
+                    {defaultTape.tracks.length} tracks · {defaultTape.totalDurationLabel?.match(/\d+m/)?.[0] || '38m'}
                   </span>
                   <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-[var(--bg-recessed)] text-[var(--text-muted)] border border-[var(--border-subtle)]">
                     {defaultTape.mood}
@@ -247,9 +247,18 @@ export const HeroSection: React.FC = () => {
                       {defaultTape.title}
                     </h3>
                     <p className="text-xs text-[var(--text-muted)] mt-1 truncate">
-                      Curated Session · Instant Launch
+                      {defaultTape.subtitle}
                     </p>
                   </div>
+                </div>
+
+                {/* 3-track preview list */}
+                <div className="space-y-1 py-1 text-xs text-[var(--text-muted)] font-mono border-t border-[var(--border-subtle)]/60">
+                  {defaultTape.tracks.slice(0, 3).map((t, idx) => (
+                    <div key={idx} className="truncate">
+                      {idx + 1}. {t.title} — {t.artist}
+                    </div>
+                  ))}
                 </div>
 
                 <button
@@ -264,7 +273,7 @@ export const HeroSection: React.FC = () => {
                       <span>Creating Room...</span>
                     </>
                   ) : (
-                    <span>▶ Launch Room</span>
+                    <span>Open Room</span>
                   )}
                 </button>
               </div>

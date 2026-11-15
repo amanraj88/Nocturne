@@ -37,6 +37,32 @@ export function formatNumberCompact(num: number): string {
   return num.toString();
 }
 
+export function formatLocalTime(input?: string | number | Date): string {
+  if (!input) return 'Just now';
+  if (typeof input === 'string') {
+    const trimmed = input.trim();
+    // If it's an ISO or Postgres date string
+    if (trimmed.includes('-') || trimmed.includes('T') || (trimmed.includes(':') && trimmed.length > 8)) {
+      const normalized = !/[Z+\-]\d*$/i.test(trimmed)
+        ? `${trimmed.replace(' ', 'T')}Z`
+        : trimmed;
+      const d = new Date(normalized);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
+      }
+    }
+    // If it's already a short formatted time string (e.g. "10:08 PM")
+    if (/^\d{1,2}:\d{2}/.test(trimmed)) {
+      return trimmed;
+    }
+  }
+  const d = new Date(input);
+  if (!isNaN(d.getTime())) {
+    return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
+  }
+  return String(input);
+}
+
 export function parseYouTubeVideoId(input: string): string | null {
   const trimmed = input.trim();
   if (!trimmed) return null;

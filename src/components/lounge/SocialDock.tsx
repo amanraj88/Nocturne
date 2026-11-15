@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useLounge } from '@/context/LoungeContext';
+import { formatLocalTime } from '@/lib/utils';
 import {
   Send,
   Smile,
@@ -34,10 +35,12 @@ export const SocialDock: React.FC = () => {
   const [chatInput, setChatInput] = useState('');
   const [isEditingName, setIsEditingName] = useState(false);
   const [editNameInput, setEditNameInput] = useState('');
-  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const chatContainerRef = useRef<HTMLDivElement | null>(null);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
   };
 
   useEffect(() => {
@@ -62,11 +65,14 @@ export const SocialDock: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col bg-[var(--bg-panel)] overflow-hidden">
+    <div className="flex-1 min-h-0 min-w-0 w-full max-w-full overflow-hidden flex flex-col bg-[var(--bg-panel)]">
       {/* ================================================================== */}
       {/* 1. SCROLLABLE MESSAGE STREAM (Borderless participant rows)          */}
       {/* ================================================================== */}
-      <div className="flex-1 overflow-y-auto px-3.5 py-3 space-y-3 custom-scrollbar">
+      <div
+        ref={chatContainerRef}
+        className="flex-1 min-h-0 w-full max-w-full overflow-y-auto overflow-x-hidden overscroll-contain px-3 py-2 space-y-3 custom-scrollbar"
+      >
         {chatMessages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center py-10 px-4 text-center">
             <MessageSquare className="w-8 h-8 text-[var(--text-muted)]/50 mx-auto mb-2" />
@@ -85,10 +91,10 @@ export const SocialDock: React.FC = () => {
             if (isSystemMessage) {
               const cleanText = msg.text.replace(/^🎵\s*/, '');
               return (
-                <div key={msg.id} className="flex justify-center my-1.5">
-                  <div className="px-2.5 py-1 rounded-md bg-[var(--bg-recessed)] border border-[var(--border-subtle)] text-[11px] text-[var(--text-muted)] flex items-center gap-1.5 max-w-fit shadow-xs font-mono">
+                <div key={msg.id} className="w-full max-w-full min-w-0 flex justify-center my-1.5 overflow-hidden">
+                  <div className="w-full max-w-full min-w-0 px-2.5 py-1 rounded-md bg-[var(--bg-recessed)] border border-[var(--border-subtle)] text-[11px] text-[var(--text-muted)] flex items-center gap-1.5 shadow-xs font-mono overflow-hidden">
                     <Music className="w-3.5 h-3.5 text-[#8B5CF6] shrink-0" />
-                    <span className="truncate">{cleanText}</span>
+                    <span className="min-w-0 flex-1 break-words whitespace-normal">{cleanText}</span>
                   </div>
                 </div>
               );
@@ -99,7 +105,7 @@ export const SocialDock: React.FC = () => {
             const initial = userName.trim().charAt(0).toUpperCase() || 'L';
 
             return (
-              <div key={msg.id} className="flex items-start gap-2.5 group">
+              <div key={msg.id} className="w-full max-w-full min-w-0 flex items-start gap-2.5 group overflow-hidden">
                 {/* 24x24 Avatar Circle */}
                 <div
                   className={`w-6 h-6 rounded-full bg-gradient-to-tr ${avatarGrad} flex items-center justify-center shrink-0 mt-0.5 text-white text-[10px] font-semibold font-mono shadow-sm`}
@@ -108,27 +114,27 @@ export const SocialDock: React.FC = () => {
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 w-full max-w-full overflow-hidden">
                   <div className="flex items-center gap-1.5 leading-none">
                     <span className="text-xs font-semibold text-[var(--text-primary)] truncate">
                       {userName}
                     </span>
 
-                    {/* Amber HOST Badge */}
-                    {isHost && (
-                      <span className="rounded-md px-1.5 py-0.5 text-[9px] bg-amber-500/15 text-amber-400 font-mono font-semibold tracking-wide">
+                    {/* Amber HOST Badge (suppressed on NOCTURNE system user) */}
+                    {isHost && userName !== 'NOCTURNE' && !msg.isSystem && (
+                      <span className="rounded-md px-1.5 py-0.5 text-[9px] bg-amber-500/15 text-amber-400 font-mono font-semibold tracking-wide shrink-0">
                         HOST
                       </span>
                     )}
 
-                    {/* Tabular Right Timestamp */}
+                    {/* Tabular Right Timestamp (Local Timezone formatted) */}
                     <span className="text-[10px] font-mono text-[var(--text-muted)] ml-auto shrink-0 tabular-nums">
-                      {msg.timestamp || 'now'}
+                      {formatLocalTime(msg.createdAt || msg.timestamp)}
                     </span>
                   </div>
 
                   {/* Clean Borderless Message Body */}
-                  <p className="text-[13px] leading-relaxed text-[var(--text-primary)]/90 break-words mt-1">
+                  <p className="text-[13px] leading-relaxed text-[var(--text-primary)]/90 break-words whitespace-normal min-w-0 mt-1">
                     {msg.text}
                   </p>
                 </div>
@@ -136,7 +142,6 @@ export const SocialDock: React.FC = () => {
             );
           })
         )}
-        <div ref={messagesEndRef} />
       </div>
 
       {/* ================================================================== */}

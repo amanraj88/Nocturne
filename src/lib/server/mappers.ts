@@ -89,6 +89,7 @@ export function mapDbPlaybackToPlayback(row: any): RoomPlaybackState {
  * Transforms a Supabase PostgreSQL chat_messages row into a NOCTURNE ChatMessage object.
  */
 export function mapDbChatToChat(row: any): ChatMessage {
+  const rawTime = row.created_at || new Date().toISOString();
   return {
     id: row.id,
     user: {
@@ -99,7 +100,8 @@ export function mapDbChatToChat(row: any): ChatMessage {
       joinedAt: '',
     },
     text: row.text,
-    timestamp: row.created_at ? new Date(row.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now',
+    timestamp: rawTime,
+    createdAt: rawTime,
     isSystem: Boolean(row.is_system),
   };
 }

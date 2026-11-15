@@ -40,7 +40,7 @@ export const Header: React.FC = () => {
         <div className="flex items-center gap-2.5 sm:gap-4 md:gap-6 min-w-0">
           <Link
             href="/"
-            className="font-syne font-extrabold text-[15px] sm:text-[17px] md:text-[19px] tracking-[-0.02em] text-[var(--text-primary)] hover:opacity-90 transition-opacity shrink-0"
+            className="font-syne font-extrabold text-sm sm:text-lg md:text-[19px] tracking-[-0.02em] text-[var(--text-primary)] hover:opacity-90 transition-opacity shrink-0"
           >
             NOCTURNE
           </Link>
@@ -108,15 +108,14 @@ export const Header: React.FC = () => {
             )}
           </button>
 
-          {/* Solid Coral Create Room Button */}
+          {/* Solid Coral Create Room Button (Hidden on < sm to avoid 360px collision) */}
           <button
             type="button"
             onClick={() => setIsCreateRoomOpen(true)}
-            className="h-[30px] md:h-[34px] px-2.5 md:px-3.5 bg-[#F43F5E] hover:bg-[#E11D48] text-white font-inter font-medium text-[12px] md:text-[13px] rounded-[6px] md:rounded-lg flex items-center gap-1 md:gap-1.5 transition-colors shadow-none active:translate-y-px shrink-0"
+            className="hidden sm:inline-flex h-[30px] md:h-[34px] px-2.5 md:px-3.5 bg-[#F43F5E] hover:bg-[#E11D48] text-white font-inter font-medium text-[12px] md:text-[13px] rounded-[6px] md:rounded-lg items-center gap-1 md:gap-1.5 transition-colors shadow-none active:translate-y-px shrink-0"
           >
             <Plus className="w-3.5 h-3.5 md:w-4 md:h-4 stroke-[2.5]" />
-            <span className="hidden sm:inline">Create Room</span>
-            <span className="sm:hidden">Create</span>
+            <span>Create Room</span>
           </button>
         </div>
       </div>

@@ -79,20 +79,17 @@ export const LiveLoungesGrid: React.FC = () => {
   };
 
   return (
-    <section id="explore" className="max-w-[1280px] mx-auto px-4 sm:px-6 py-8">
+    <section id="explore" className="w-full max-w-[1280px] max-w-full min-w-0 mx-auto px-4 sm:px-6 py-8">
       {/* Header & Filter Chips Row */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-4 border-b border-[var(--border-subtle)]">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-4 border-b border-[var(--border-subtle)] w-full max-w-full min-w-0">
         <div>
           <h2 className="font-syne font-bold text-xl text-[var(--text-primary)]">
-            Live Rooms & Starter Tapes
+            Rooms
           </h2>
-          <p className="mt-1 text-xs sm:text-sm text-[var(--text-muted)]">
-            Active communal sessions and one-click launchable collections.
-          </p>
         </div>
 
         {/* Category Filter Chips */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 custom-scrollbar">
+        <div className="flex items-center gap-2 w-full max-w-full min-w-0 overflow-x-auto pb-2 no-scrollbar touch-pan-x">
           {CATEGORIES.map((cat) => {
             const isActive = activeCategory === cat;
             return (
@@ -113,18 +110,8 @@ export const LiveLoungesGrid: React.FC = () => {
         </div>
       </div>
 
-      {/* Honest active rooms status notice if no rooms are currently live */}
-      {activeRooms.length === 0 && (
-        <div className="mt-4 px-3.5 py-2 rounded-lg bg-[var(--bg-recessed)] border border-[var(--border-subtle)] flex items-center justify-between text-xs text-[var(--text-muted)]">
-          <div className="flex items-center gap-2">
-            <Radio className="w-3.5 h-3.5 text-[#8B5CF6]" />
-            <span>No Public Lounges Live right now. Launch any curated tape below to start listening.</span>
-          </div>
-        </div>
-      )}
-
       {/* 3-Column Responsive Card Grid */}
-      <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+      <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 w-full max-w-full min-w-0">
         {/* 1. Live Rooms (if any match category) */}
         {filteredLiveRooms.map((room) => {
           const coverUrl = getLiveRoomCover(room);
@@ -132,20 +119,20 @@ export const LiveLoungesGrid: React.FC = () => {
           return (
             <article
               key={room.id}
-              className="rounded-xl bg-[var(--bg-panel)] border border-[var(--border-subtle)] p-4 flex flex-col justify-between hover:border-[#8B5CF6]/40 transition-colors shadow-sm"
+              className="w-full max-w-full min-w-0 overflow-hidden box-border rounded-xl bg-[var(--bg-panel)] border border-[var(--border-subtle)] p-4 flex flex-col justify-between hover:border-[#8B5CF6]/40 transition-colors shadow-sm"
             >
               <div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-medium text-[#10B981] flex items-center gap-1.5">
+                <div className="flex items-center justify-between min-w-0 gap-2">
+                  <span className="text-[11px] font-medium text-[#10B981] flex items-center gap-1.5 font-mono shrink-0">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
                     LIVE · {room.listenerCount} listening
                   </span>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-[var(--bg-recessed)] text-[var(--text-muted)] border border-[var(--border-subtle)]">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-[var(--bg-recessed)] text-[var(--text-muted)] border border-[var(--border-subtle)] shrink-0">
                     {room.vibeTag || 'Live Room'}
                   </span>
                 </div>
 
-                <div className="mt-3.5 flex items-center gap-3.5">
+                <div className="mt-3.5 flex items-center gap-3.5 min-w-0 w-full overflow-hidden">
                   {/* Tactile Vinyl Sleeve Preview */}
                   <div className="relative w-[72px] h-[72px] shrink-0">
                     <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-14 h-14 rounded-full bg-[#0E0E13] border border-[#2D2945] flex items-center justify-center shadow-md">
@@ -182,7 +169,7 @@ export const LiveLoungesGrid: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 overflow-hidden">
                     <h3 className="font-syne font-bold text-sm text-[var(--text-primary)] truncate">
                       {room.title}
                     </h3>
@@ -193,16 +180,16 @@ export const LiveLoungesGrid: React.FC = () => {
                 </div>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-[var(--border-subtle)] flex items-center justify-between gap-2">
-                <span className="text-[11px] text-[var(--text-muted)] flex items-center gap-1">
+              <div className="mt-4 pt-3 border-t border-[var(--border-subtle)] flex items-center justify-between gap-2 min-w-0">
+                <span className="text-[11px] text-[var(--text-muted)] flex items-center gap-1 shrink-0">
                   <Users className="w-3 h-3" />
                   <span>{room.listenerCount} in room</span>
                 </span>
                 <Link
                   href={`/room/${room.slug}`}
-                  className="h-8 px-3.5 rounded-md bg-[#111115] text-white dark:bg-[#F4F4F6] dark:text-[#111115] hover:opacity-90 font-medium text-xs flex items-center justify-center transition-opacity"
+                  className="h-8 px-3.5 rounded-md bg-[#111115] text-white dark:bg-[#F4F4F6] dark:text-[#111115] hover:opacity-90 font-medium text-xs flex items-center justify-center transition-opacity shrink-0"
                 >
-                  Tune In →
+                  Tune In
                 </Link>
               </div>
             </article>
@@ -217,20 +204,19 @@ export const LiveLoungesGrid: React.FC = () => {
           return (
             <article
               key={tape.id}
-              className="rounded-xl bg-[var(--bg-panel)] border border-[var(--border-subtle)] p-4 flex flex-col justify-between hover:border-[#8B5CF6]/40 transition-colors shadow-sm"
+              className="w-full max-w-full min-w-0 overflow-hidden box-border rounded-xl bg-[var(--bg-panel)] border border-[var(--border-subtle)] p-4 flex flex-col justify-between hover:border-[#8B5CF6]/40 transition-colors shadow-sm"
             >
               <div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-medium text-[#8B5CF6] flex items-center gap-1.5">
-                    <Disc className="w-3.5 h-3.5 shrink-0" />
-                    STARTER TAPE · {tape.tracks.length} tracks
+                <div className="flex items-center justify-between min-w-0 gap-2">
+                  <span className="text-[11px] text-[var(--text-muted)] font-mono truncate flex-1 min-w-0">
+                    1. {tape.tracks[0]?.title} · 2. {tape.tracks[1]?.title}
                   </span>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-[var(--bg-recessed)] text-[var(--text-muted)] border border-[var(--border-subtle)]">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-[var(--bg-recessed)] text-[var(--text-muted)] border border-[var(--border-subtle)] shrink-0">
                     {tape.mood}
                   </span>
                 </div>
 
-                <div className="mt-3.5 flex items-center gap-3.5">
+                <div className="mt-3.5 flex items-center gap-3.5 min-w-0 w-full overflow-hidden">
                   {/* Tactile Vinyl Sleeve Preview */}
                   <div className="relative w-[72px] h-[72px] shrink-0">
                     <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-14 h-14 rounded-full bg-[#0E0E13] border border-[#2D2945] flex items-center justify-center shadow-md">
@@ -250,7 +236,7 @@ export const LiveLoungesGrid: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 overflow-hidden">
                     <h3 className="font-syne font-bold text-sm text-[var(--text-primary)] truncate">
                       {tape.title}
                     </h3>
@@ -261,23 +247,23 @@ export const LiveLoungesGrid: React.FC = () => {
                 </div>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-[var(--border-subtle)] flex items-center justify-between gap-2">
-                <span className="text-[11px] text-[var(--text-muted)]">
-                  {tape.totalDurationLabel}
+              <div className="mt-4 pt-3 border-t border-[var(--border-subtle)] flex items-center justify-between gap-2 min-w-0">
+                <span className="text-[11px] text-[var(--text-muted)] truncate min-w-0 font-mono">
+                  {tape.tracks.length} tracks ({tape.totalDurationLabel?.match(/\d+m/)?.[0] || '35m'})
                 </span>
                 <button
                   type="button"
                   onClick={() => handleLaunchTape(tape)}
                   disabled={Boolean(launchingTapeId)}
-                  className="h-8 px-3.5 rounded-md bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[#8B5CF6]/40 text-[var(--text-primary)] font-medium text-xs flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50"
+                  className="h-8 px-3.5 rounded-md bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[#8B5CF6]/40 text-[var(--text-primary)] font-medium text-xs flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50 shrink-0"
                 >
                   {isThisTapeLaunching ? (
                     <>
                       <Loader2 className="w-3 h-3 animate-spin text-[#8B5CF6]" />
-                      <span>Launching...</span>
+                      <span>Opening...</span>
                     </>
                   ) : (
-                    <span>▶ Launch Room</span>
+                    <span>Open Room</span>
                   )}
                 </button>
               </div>
