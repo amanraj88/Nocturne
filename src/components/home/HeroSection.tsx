@@ -84,13 +84,13 @@ export const HeroSection: React.FC = () => {
             Step into a live listening room, drop tracks into a shared FIFO queue, and listen in lockstep with friends.
           </p>
 
-          {/* Action Row */}
+          {/* Action Row: Stack full-width on mobile (< sm), inline on desktop */}
           <div className="mt-6 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-            {/* Primary Coral Button */}
+            {/* Primary Coral Button (Full-width on mobile, auto on desktop) */}
             <button
               type="button"
               onClick={() => setIsCreateRoomOpen(true)}
-              className="h-11 px-5 rounded-lg bg-[#F43F5E] hover:bg-[#E11D48] text-white font-medium text-sm inline-flex items-center justify-center gap-2 transition-colors shrink-0 shadow-none active:translate-y-px"
+              className="h-11 px-5 w-full sm:w-auto rounded-lg bg-[#F43F5E] hover:bg-[#E11D48] text-white font-medium text-sm inline-flex items-center justify-center gap-2 transition-colors shrink-0 shadow-none active:translate-y-px"
             >
               <Plus className="w-4 h-4 stroke-[2.5]" />
               <span>Create a Room</span>
@@ -99,7 +99,7 @@ export const HeroSection: React.FC = () => {
             {/* Recessed Inline Join Capsule */}
             <form
               onSubmit={handleJoinSubmit}
-              className="h-11 flex-1 max-w-md rounded-lg bg-[var(--bg-recessed)] border border-[var(--border-subtle)] focus-within:border-[#8B5CF6]/50 p-1.5 pl-3 flex items-center gap-2 transition-colors"
+              className="h-11 w-full sm:flex-1 sm:max-w-md rounded-lg bg-[var(--bg-recessed)] border border-[var(--border-subtle)] focus-within:border-[#8B5CF6]/50 p-1.5 pl-3 flex items-center gap-2 transition-colors"
             >
               <input
                 type="text"

@@ -36,7 +36,6 @@ export default function RoomPage() {
 
   const [isMounted, setIsMounted] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
-  const [mobileTab, setMobileTab] = useState<'stage' | 'dock'>('stage');
   const [isCopied, setIsCopied] = useState(false);
   const [isAvatarPopoverOpen, setIsAvatarPopoverOpen] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
@@ -259,34 +258,34 @@ export default function RoomPage() {
       ) : (
         <div className="flex flex-col w-full h-[100dvh] overflow-hidden bg-[var(--bg-canvas)] text-[var(--text-primary)] select-none">
           {/* ============================================================== */}
-          {/* 1. DEDICATED 52px ROOM TOP BAR (Approved Stitch Specification)  */}
+          {/* 1. DEDICATED ROOM TOP BAR (48px mobile / 52px desktop)         */}
           {/* ============================================================== */}
-          <header className="h-[52px] w-full bg-[var(--bg-canvas)] border-b border-[var(--border-subtle)] px-4 sm:px-6 flex items-center justify-between gap-3 shrink-0 z-30">
+          <header className="h-[48px] lg:h-[52px] w-full bg-[var(--bg-canvas)] border-b border-[var(--border-subtle)] px-3 lg:px-6 flex items-center justify-between gap-2 sm:gap-3.5 shrink-0 z-30">
             {/* Left Zone: Back Link + Divider + Room Title + Live Capsule */}
-            <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
               <Link
                 href="/rooms"
                 className="text-xs font-mono text-[var(--text-muted)] hover:text-[var(--text-primary)] flex items-center gap-1 transition-colors shrink-0"
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
-                <span>Rooms</span>
+                <span className="hidden sm:inline">Rooms</span>
               </Link>
 
               <span className="h-3.5 w-[1px] bg-[var(--border-subtle)] shrink-0" />
 
-              <h1 className="font-syne text-sm sm:text-base font-bold text-[var(--text-primary)] tracking-[-0.02em] truncate max-w-[160px] sm:max-w-[320px]">
+              <h1 className="font-syne text-xs sm:text-sm lg:text-base font-bold text-[var(--text-primary)] tracking-[-0.02em] truncate max-w-[130px] sm:max-w-[240px] lg:max-w-[320px]">
                 {currentRoom.title}
               </h1>
 
               {/* Live Indicator Capsule */}
-              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 text-xs font-mono shrink-0">
+              <span className="inline-flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 text-[10px] sm:text-xs font-mono shrink-0">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 Live
               </span>
             </div>
 
-            {/* Right Zone: Avatar Stack / Popover + Invite Ticket + Exit Action */}
-            <div className="flex items-center gap-2 sm:gap-3.5 shrink-0 relative" ref={popoverRef}>
+            {/* Right Zone: Avatar Stack / Popover + Invite Ticket/Button + Exit Action */}
+            <div className="flex items-center gap-1.5 sm:gap-3 shrink-0 relative" ref={popoverRef}>
               {/* Participant Avatar Stack & Popover Trigger */}
               <div className="relative flex items-center">
                 <button
@@ -299,7 +298,7 @@ export default function RoomPage() {
                     {allParticipants.slice(0, 3).map((p, idx) => (
                       <span
                         key={p.id || idx}
-                        className={`inline-block w-[26px] h-[26px] rounded-full ring-2 ring-[var(--bg-canvas)] text-[10px] font-mono font-medium flex items-center justify-center shrink-0 ${
+                        className={`inline-block w-[22px] h-[22px] sm:w-[26px] sm:h-[26px] rounded-full ring-2 ring-[var(--bg-canvas)] text-[9px] sm:text-[10px] font-mono font-medium flex items-center justify-center shrink-0 ${
                           idx === 0
                             ? 'bg-[#181324] border border-amber-400/40 text-amber-300'
                             : idx === 1
@@ -311,8 +310,8 @@ export default function RoomPage() {
                       </span>
                     ))}
                   </div>
-                  <span className="text-xs font-mono text-[var(--text-muted)] hover:text-[var(--text-primary)] ml-2 transition-colors">
-                    {allParticipants.length} listening ▾
+                  <span className="text-[11px] sm:text-xs font-mono text-[var(--text-muted)] hover:text-[var(--text-primary)] ml-1.5 sm:ml-2 transition-colors">
+                    {allParticipants.length} <span className="hidden sm:inline">listening </span>▾
                   </span>
                 </button>
 
@@ -414,7 +413,22 @@ export default function RoomPage() {
                 )}
               </div>
 
-              {/* Monospace Recessed Invite Ticket */}
+              {/* Compact Icon-Only Invite Copy Button for Mobile (< sm) */}
+              <button
+                type="button"
+                onClick={handleCopyInvite}
+                className="sm:hidden w-8 h-8 rounded-lg bg-[var(--bg-recessed)] border border-[var(--border-subtle)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors shrink-0"
+                title="Copy Invite Link"
+                aria-label="Copy Invite Link"
+              >
+                {isCopied ? (
+                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                ) : (
+                  <LinkIcon className="w-3.5 h-3.5" />
+                )}
+              </button>
+
+              {/* Monospace Recessed Invite Ticket for Desktop & Tablet (>= sm) */}
               <div className="hidden sm:flex items-center bg-[var(--bg-recessed)] border border-[var(--border-subtle)] rounded-lg px-2.5 py-1 text-xs font-mono text-[var(--text-muted)] gap-2 shadow-inner">
                 <span className="flex items-center gap-1 text-[var(--text-muted)]">
                   <LinkIcon className="w-3 h-3 text-[var(--text-muted)]" />
@@ -439,9 +453,10 @@ export default function RoomPage() {
               <button
                 type="button"
                 onClick={handleExitRoom}
-                className="h-8 px-3 rounded-lg text-xs font-medium text-[var(--text-muted)] hover:text-rose-400 hover:bg-rose-500/10 border border-[var(--border-subtle)] hover:border-rose-500/30 transition-all shrink-0"
+                className="h-7 sm:h-8 px-2 sm:px-3 rounded-lg text-xs font-medium text-[var(--text-muted)] hover:text-rose-400 hover:bg-rose-500/10 border border-[var(--border-subtle)] hover:border-rose-500/30 transition-all shrink-0"
               >
-                {isHost ? 'End Room' : 'Leave Room'}
+                {isHost ? 'End' : 'Leave'}
+                <span className="hidden sm:inline"> Room</span>
               </button>
             </div>
           </header>
@@ -450,60 +465,18 @@ export default function RoomPage() {
           {/* 2. 2-COLUMN MAIN WORKSPACE (Desktop Locked & Mobile Responsive) */}
           {/* Left: Music Stage (flex-1) | Right: Fixed 370px Social Dock     */}
           {/* ============================================================== */}
-          <main className="flex-1 w-full max-w-[1600px] mx-auto flex flex-col lg:flex-row overflow-hidden h-[calc(100dvh-52px)]">
-            {/* Left Column — Flexible Music Stage (VinylStage + Integrated Player Deck) */}
-            <section
-              className={`flex-1 min-w-0 flex flex-col justify-between relative overflow-hidden bg-[var(--bg-canvas)] ${
-                mobileTab === 'dock' ? 'hidden lg:flex' : 'flex'
-              }`}
-            >
+          <main className="flex-1 w-full max-w-[1600px] mx-auto flex flex-col lg:flex-row overflow-hidden h-[calc(100dvh-48px)] lg:h-[calc(100dvh-52px)]">
+            {/* Left Column — Flexible Music Stage (Upper ~45% on mobile, flex-1 on desktop) */}
+            <section className="w-full lg:flex-1 shrink-0 lg:shrink min-w-0 flex flex-col justify-between relative overflow-hidden bg-[var(--bg-canvas)]">
               <VinylStage />
             </section>
 
-            {/* Right Column — Fixed 370px Social Dock (Queue & Chat Stacked) */}
-            <aside
-              className={`w-full lg:w-[370px] shrink-0 h-full bg-[var(--bg-panel)] border-t lg:border-t-0 lg:border-l border-[var(--border-subtle)] flex flex-col overflow-hidden relative ${
-                mobileTab === 'stage' ? 'hidden lg:flex' : 'flex'
-              }`}
-            >
-              {/* Mobile Return to Stage Header Bar */}
-              <div className="lg:hidden h-10 px-3 border-b border-[var(--border-subtle)] bg-[var(--bg-panel)] flex items-center justify-between shrink-0">
-                <span className="font-mono text-xs text-[var(--text-muted)]">Queue &amp; Chat</span>
-                <button
-                  type="button"
-                  onClick={() => setMobileTab('stage')}
-                  className="text-xs font-mono text-[#8B5CF6] hover:underline"
-                >
-                  Back to Player
-                </button>
-              </div>
-
-              {/* Stacked Layout: Top 88px Unified Queue Header + Full-Height Chat Stream */}
+            {/* Right Column — Fixed 370px Social Dock (Lower ~55% on mobile, fixed 370px on desktop) */}
+            <aside className="w-full lg:w-[370px] flex-1 lg:flex-initial lg:h-full shrink-0 min-h-0 bg-[var(--bg-panel)] border-t lg:border-t-0 lg:border-l border-[var(--border-subtle)] flex flex-col overflow-hidden relative">
               <QueueDock />
               <SocialDock />
             </aside>
           </main>
-
-          {/* Mobile Bottom Dock Switcher Pill */}
-          <div className="lg:hidden fixed bottom-4 right-4 z-40">
-            <button
-              type="button"
-              onClick={() => setMobileTab(mobileTab === 'stage' ? 'dock' : 'stage')}
-              className="px-4 py-2 rounded-full bg-[#8B5CF6] text-white text-xs font-semibold shadow-xl flex items-center gap-2"
-            >
-              {mobileTab === 'stage' ? (
-                <>
-                  <MessageSquare className="w-3.5 h-3.5" />
-                  <span>Queue &amp; Chat ({queue.length + chatMessages.length})</span>
-                </>
-              ) : (
-                <>
-                  <Radio className="w-3.5 h-3.5" />
-                  <span>Back to Stage</span>
-                </>
-              )}
-            </button>
-          </div>
         </div>
       )}
     </>

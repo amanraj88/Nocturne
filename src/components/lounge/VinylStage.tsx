@@ -453,11 +453,11 @@ export const VinylStage: React.FC = () => {
           ref={containerRef}
           className={`relative z-10 w-full max-w-[640px] rounded-xl overflow-hidden border border-[var(--border-subtle)] shadow-2xl bg-black transition-opacity duration-300 ${
             isVideoVisible
-              ? 'w-full aspect-video opacity-100 flex items-center justify-center'
-              : 'fixed -left-[9999px] top-0 w-[240px] h-[240px] opacity-0 pointer-events-none'
+              ? 'w-full aspect-video min-h-[205px] opacity-100 flex items-center justify-center'
+              : 'fixed -left-[9999px] top-0 w-[240px] h-[240px] min-h-[205px] opacity-0 pointer-events-none'
           }`}
         >
-          <div id="nocturne-yt-player" className="w-full h-full" />
+          <div id="nocturne-yt-player" className="w-full h-full min-h-[205px]" />
           {/* Transparent Pointer-Shield Overlay: prevents breaking synchronization via native YouTube controls */}
           <div className="absolute inset-0 z-20 pointer-events-auto bg-transparent" />
         </div>
@@ -467,25 +467,25 @@ export const VinylStage: React.FC = () => {
           <div className="relative z-10 flex items-center justify-center -translate-x-3 sm:-translate-x-4">
             {/* Peeking Grooved Vinyl Disc (spins smoothly when isPlaying) */}
             <div
-              className={`absolute w-[220px] h-[220px] sm:w-[300px] sm:h-[300px] md:w-[340px] md:h-[340px] rounded-full vinyl-grooves border border-white/[0.08] flex items-center justify-center translate-x-[65px] sm:translate-x-[90px] shadow-2xl z-0 transition-transform duration-500`}
+              className={`absolute w-[140px] h-[140px] sm:w-[240px] sm:h-[240px] lg:w-[340px] lg:h-[340px] rounded-full vinyl-grooves border border-white/[0.08] flex items-center justify-center translate-x-[45px] sm:translate-x-[70px] lg:translate-x-[90px] shadow-2xl z-0 transition-transform duration-500`}
               style={{
                 animation: isPlaying ? 'spin 18s linear infinite' : 'none',
               }}
             >
               {/* Center Spindle Paper Label */}
-              <div className="w-20 h-20 sm:w-28 sm:h-28 rounded-full bg-[#181324] border border-white/10 flex flex-col items-center justify-center relative shadow-inner">
-                <span className="text-[8px] sm:text-[9px] font-syne font-bold tracking-wider text-rose-400 uppercase">
+              <div className="w-14 h-14 sm:w-20 sm:h-20 lg:w-28 lg:h-28 rounded-full bg-[#181324] border border-white/10 flex flex-col items-center justify-center relative shadow-inner">
+                <span className="text-[7px] sm:text-[8px] lg:text-[9px] font-syne font-bold tracking-wider text-rose-400 uppercase">
                   NOCTURNE
                 </span>
-                <span className="text-[6.5px] sm:text-[7.5px] font-mono tracking-widest text-zinc-400 mt-0.5">
+                <span className="text-[5.5px] sm:text-[6.5px] lg:text-[7.5px] font-mono tracking-widest text-zinc-400 mt-0.5">
                   NOC-01 · 33 RPM
                 </span>
-                <span className="w-1.5 h-1.5 rounded-full bg-[#09090D] border border-white/20 mt-1" />
+                <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-[#09090D] border border-white/20 mt-0.5 sm:mt-1" />
               </div>
             </div>
 
             {/* Square Album Artwork Sleeve */}
-            <div className="w-52 h-52 sm:w-64 sm:h-64 md:w-72 md:h-72 rounded-xl border border-white/10 shadow-2xl relative z-10 overflow-hidden bg-[#121218] shrink-0">
+            <div className="w-[136px] h-[136px] sm:w-56 sm:h-56 lg:w-72 lg:h-72 rounded-xl border border-white/10 shadow-2xl relative z-10 overflow-hidden bg-[#121218] shrink-0">
               {currentTrack && trackArtworkUrl ? (
                 <img
                   src={trackArtworkUrl}
@@ -503,14 +503,14 @@ export const VinylStage: React.FC = () => {
                     <circle cx="100" cy="100" r="52" fill="none" stroke="currentColor" strokeWidth="0.8" />
                   </svg>
                   {/* Center Label */}
-                  <div className="absolute w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-[#181624] border border-[#8B5CF6]/40 flex flex-col items-center justify-center shadow-inner">
-                    <span className="text-[8px] sm:text-[9px] font-syne font-bold tracking-wider text-[#8B5CF6] uppercase">
+                  <div className="absolute w-14 h-14 sm:w-20 sm:h-20 lg:w-24 lg:h-24 rounded-full bg-[#181624] border border-[#8B5CF6]/40 flex flex-col items-center justify-center shadow-inner">
+                    <span className="text-[7px] sm:text-[8px] lg:text-[9px] font-syne font-bold tracking-wider text-[#8B5CF6] uppercase">
                       NOCTURNE
                     </span>
-                    <span className="text-[6.5px] sm:text-[7.5px] font-mono tracking-widest text-[var(--text-muted)] mt-0.5">
+                    <span className="text-[5.5px] sm:text-[6.5px] lg:text-[7.5px] font-mono tracking-widest text-[var(--text-muted)] mt-0.5">
                       33 RPM
                     </span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#0E0E13] border border-white/20 mt-1" />
+                    <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-[#0E0E13] border border-white/20 mt-0.5 sm:mt-1" />
                   </div>
                 </div>
               )}
@@ -531,25 +531,25 @@ export const VinylStage: React.FC = () => {
       {/* ================================================================== */}
       {/* 148px 3-TIER INTEGRATED PLAYER DECK                                */}
       {/* ================================================================== */}
-      <div className="w-full max-w-[840px] mx-auto border-t border-[var(--border-subtle)] px-4 sm:px-6 py-2.5 sm:py-3 flex flex-col justify-between gap-1.5 sm:gap-2 shrink-0 z-20 bg-[var(--bg-canvas)]/95">
+      <div className="w-full max-w-[840px] mx-auto border-t border-[var(--border-subtle)] px-3 sm:px-6 py-2 sm:py-3 flex flex-col justify-between gap-1 sm:gap-2 shrink-0 z-20 bg-[var(--bg-canvas)]/95">
         {/* Tier 1 (44px): Track Identity & Mode Switcher */}
-        <div className="h-10 flex items-center justify-between gap-3">
-          <div className="min-w-0 pr-2">
-            <h2 className="font-syne text-[16px] sm:text-[18px] font-bold text-[var(--text-primary)] tracking-[-0.02em] leading-tight truncate">
+        <div className="h-10 flex items-center justify-between gap-2 sm:gap-3">
+          <div className="min-w-0 pr-1 sm:pr-2">
+            <h2 className="font-syne text-[14px] sm:text-[18px] font-bold text-[var(--text-primary)] tracking-[-0.02em] leading-tight truncate">
               {displayTitle}
             </h2>
-            <p className="text-xs text-[var(--text-muted)] truncate mt-0.5 font-inter">
+            <p className="text-[11px] sm:text-xs text-[var(--text-muted)] truncate mt-0.5 font-inter">
               {displaySubtitle}
             </p>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
             {/* Contextual Segmented Control [ 🎬 Video | 🖼 Artwork ] */}
             <div className="bg-[var(--bg-recessed)] border border-[var(--border-subtle)] p-0.5 rounded-lg flex items-center text-xs">
               <button
                 type="button"
                 onClick={() => setViewMode('video')}
-                className={`px-2.5 py-1 rounded-[6px] font-medium flex items-center gap-1.5 transition-colors ${
+                className={`px-2 sm:px-2.5 py-1 rounded-[6px] font-medium flex items-center gap-1 sm:gap-1.5 transition-colors min-h-[32px] sm:min-h-0 ${
                   viewMode === 'video'
                     ? 'bg-[var(--bg-thumb)] border border-[#8B5CF6]/35 text-[var(--text-primary)] shadow-sm'
                     : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
@@ -562,7 +562,7 @@ export const VinylStage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setViewMode('artwork')}
-                className={`px-2.5 py-1 rounded-[6px] font-medium flex items-center gap-1.5 transition-colors ${
+                className={`px-2 sm:px-2.5 py-1 rounded-[6px] font-medium flex items-center gap-1 sm:gap-1.5 transition-colors min-h-[32px] sm:min-h-0 ${
                   viewMode === 'artwork'
                     ? 'bg-[var(--bg-thumb)] border border-[#8B5CF6]/35 text-[var(--text-primary)] shadow-sm'
                     : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
@@ -583,7 +583,7 @@ export const VinylStage: React.FC = () => {
                 setTimeout(() => setLikeBurst(false), 900);
                 triggerReaction('❤️');
               }}
-              className={`w-8 h-8 rounded-lg border border-[var(--border-subtle)] flex items-center justify-center transition-all ${
+              className={`w-9 h-9 sm:w-8 sm:h-8 rounded-lg border border-[var(--border-subtle)] flex items-center justify-center transition-all ${
                 isLiked
                   ? 'bg-rose-500/15 border-rose-500/30 text-[#F43F5E]'
                   : 'bg-[var(--bg-recessed)] text-[var(--text-muted)] hover:text-[#F43F5E] hover:border-rose-500/30'
@@ -597,7 +597,7 @@ export const VinylStage: React.FC = () => {
             <button
               type="button"
               onClick={toggleFullscreen}
-              className="w-8 h-8 rounded-lg border border-[var(--border-subtle)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-[var(--bg-recessed)] transition-all"
+              className="w-9 h-9 sm:w-8 sm:h-8 rounded-lg border border-[var(--border-subtle)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-[var(--bg-recessed)] transition-all"
               title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen Stage'}
             >
               {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
@@ -606,8 +606,8 @@ export const VinylStage: React.FC = () => {
         </div>
 
         {/* Tier 2 (52px): Flowing Ribbon Waveform Scrubber & Monospace Timestamps */}
-        <div className="h-10 flex items-center gap-3">
-          <span className="font-mono text-xs text-[var(--text-muted)] tabular-nums shrink-0 w-11">
+        <div className="h-9 sm:h-10 flex items-center gap-2 sm:gap-3">
+          <span className="font-mono text-[11px] sm:text-xs text-[var(--text-muted)] tabular-nums shrink-0 w-9 sm:w-11">
             {formatTime(progressSeconds)}
           </span>
 
@@ -677,15 +677,15 @@ export const VinylStage: React.FC = () => {
             </div>
           </div>
 
-          <span className="font-mono text-xs text-[var(--text-muted)] tabular-nums shrink-0 w-11 text-right">
+          <span className="font-mono text-[11px] sm:text-xs text-[var(--text-muted)] tabular-nums shrink-0 w-9 sm:w-11 text-right">
             {formatTime(durationSeconds)}
           </span>
         </div>
 
         {/* Tier 3 (44px): Role-Aware Transport Controls, Honest Sync Status & Elastic Volume Slider */}
-        <div className="h-11 flex items-center justify-between">
+        <div className="h-11 flex items-center justify-between gap-1 sm:gap-2">
           {/* Left: Transport Cluster */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
             {/* Restart / Prev Button */}
             <button
               type="button"
@@ -695,7 +695,7 @@ export const VinylStage: React.FC = () => {
                 }
               }}
               disabled={!isHost}
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] disabled:opacity-40 disabled:hover:text-[var(--text-muted)] transition-colors"
+              className="w-9 h-9 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] disabled:opacity-40 disabled:hover:text-[var(--text-muted)] transition-colors"
               title={isHost ? 'Restart Track' : 'Host controls playback'}
             >
               <SkipBack className="w-4 h-4 fill-current" />
@@ -710,7 +710,7 @@ export const VinylStage: React.FC = () => {
                 }
               }}
               disabled={!isHost}
-              className="w-[42px] h-[42px] rounded-full bg-[#F43F5E] hover:bg-[#E11D48] text-white flex items-center justify-center transition-all active:scale-95 shadow-none disabled:opacity-50"
+              className="w-[42px] h-[42px] rounded-full bg-[#F43F5E] hover:bg-[#E11D48] text-white flex items-center justify-center transition-all active:scale-95 shadow-none disabled:opacity-50 shrink-0"
               title={isHost ? (isPlaying ? 'Pause' : 'Play') : 'Host controls playback'}
             >
               {isPlaying ? (
@@ -729,7 +729,7 @@ export const VinylStage: React.FC = () => {
                 }
               }}
               disabled={!isHost}
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] disabled:opacity-40 disabled:hover:text-[var(--text-muted)] transition-colors"
+              className="w-9 h-9 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] disabled:opacity-40 disabled:hover:text-[var(--text-muted)] transition-colors"
               title={isHost ? 'Skip Track' : 'Host controls playback'}
             >
               <SkipForward className="w-4 h-4 fill-current" />
@@ -737,31 +737,32 @@ export const VinylStage: React.FC = () => {
           </div>
 
           {/* Right: Honest Sync Indicator + Local Elastic Volume Slider */}
-          <div className="flex items-center gap-3 sm:gap-5">
+          <div className="flex items-center gap-1.5 sm:gap-5 min-w-0">
             {/* Honest Sync Indicator (Zero fake ms telemetry) */}
             {currentRoom?.host?.isListening === false ? (
-              <span className="inline-flex items-center gap-1.5 text-xs font-mono text-amber-400/90" title="Host is currently disconnected">
+              <span className="inline-flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs font-mono text-amber-400/90 shrink-0" title="Host is currently disconnected">
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                Host Offline
+                <span className="hidden xs:inline">Host Offline</span>
+                <span className="xs:hidden">Offline</span>
               </span>
             ) : isSeekingDueToSyncRef.current ? (
-              <span className="inline-flex items-center gap-1.5 text-xs font-mono text-amber-400" title="Synchronizing drift">
+              <span className="inline-flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs font-mono text-amber-400 shrink-0" title="Synchronizing drift">
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
                 Syncing
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1.5 text-xs font-mono text-emerald-400" title="Playback in lockstep">
+              <span className="inline-flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs font-mono text-emerald-400 shrink-0" title="Playback in lockstep">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                 Synced
               </span>
             )}
 
             {/* Local Elastic Volume Slider */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
               <button
                 type="button"
                 onClick={toggleMute}
-                className="w-7 h-7 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+                className="w-8 h-8 sm:w-7 sm:h-7 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
                 title={isMuted ? 'Unmute' : 'Mute'}
               >
                 {isMuted || volume === 0 ? (
@@ -774,7 +775,7 @@ export const VinylStage: React.FC = () => {
               </button>
 
               {/* Slim Violet Volume Track with 10px Thumb */}
-              <div className="w-20 sm:w-24 h-1.5 bg-[#0B0B0F] border border-white/[0.07] rounded-full relative flex items-center cursor-pointer group">
+              <div className="w-14 sm:w-20 md:w-24 h-1.5 bg-[#0B0B0F] border border-white/[0.07] rounded-full relative flex items-center cursor-pointer group">
                 <div
                   className="h-full bg-[#8B5CF6] rounded-full transition-all"
                   style={{ width: `${isMuted ? 0 : volume}%` }}
@@ -794,7 +795,7 @@ export const VinylStage: React.FC = () => {
                 />
               </div>
 
-              <span className="font-mono text-xs text-[var(--text-muted)] tabular-nums w-8 text-right">
+              <span className="font-mono text-[10px] sm:text-xs text-[var(--text-muted)] tabular-nums w-7 sm:w-8 text-right">
                 {isMuted ? '0%' : `${volume}%`}
               </span>
             </div>

@@ -100,7 +100,7 @@ export const LiveLoungesGrid: React.FC = () => {
                 key={cat}
                 type="button"
                 onClick={() => setActiveCategory(cat)}
-                className={`h-8 px-3 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
+                className={`h-8 px-3 rounded-lg text-xs font-medium whitespace-nowrap shrink-0 transition-colors ${
                   isActive
                     ? 'bg-[var(--bg-thumb)] border border-[#8B5CF6]/40 text-[var(--text-primary)]'
                     : 'bg-[var(--bg-recessed)] border border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-primary)]'

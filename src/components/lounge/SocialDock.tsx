@@ -142,7 +142,7 @@ export const SocialDock: React.FC = () => {
       {/* ================================================================== */}
       {/* 2. PINNED BOTTOM CHAT COMPOSER                                     */}
       {/* ================================================================== */}
-      <div className="p-3 border-t border-[var(--border-subtle)] bg-[var(--bg-panel)] shrink-0">
+      <div className="p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] border-t border-[var(--border-subtle)] bg-[var(--bg-panel)] shrink-0">
         {/* Identity Helper Line with Inline Rename */}
         <div className="mb-1.5 flex items-center justify-between text-[11px] text-[var(--text-muted)]">
           {isEditingName ? (
