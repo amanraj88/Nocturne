@@ -1768,7 +1768,7 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       localStorage.setItem('nocturne_volume', String(clamped));
     } catch (e) {}
 
-    if (clamped > 0) {
+    if (clamped > 0 && isMutedRef.current) {
       setIsMuted(false);
       isMutedRef.current = false;
       try {
@@ -1780,43 +1780,49 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       audioRef.current.volume = clamped / 100;
       audioRef.current.muted = clamped === 0;
     }
-    if (ytPlayerRef.current && typeof ytPlayerRef.current.setVolume === 'function') {
+
+    const yt = typeof window !== 'undefined' ? ((window as any).__nocturneYtPlayer || ytPlayerRef.current) : ytPlayerRef.current;
+    if (yt && typeof yt.setVolume === 'function') {
       try {
-        ytPlayerRef.current.setVolume(clamped);
-        if (clamped > 0 && typeof ytPlayerRef.current.unMute === 'function') {
-          ytPlayerRef.current.unMute();
-        } else if (clamped === 0 && typeof ytPlayerRef.current.mute === 'function') {
-          ytPlayerRef.current.mute();
+        if (clamped === 0) {
+          if (typeof yt.mute === 'function') yt.mute();
+        } else {
+          if (typeof yt.isMuted === 'function' && yt.isMuted()) {
+            if (typeof yt.unMute === 'function') yt.unMute();
+          } else if (typeof yt.unMute === 'function') {
+            yt.unMute();
+          }
+          yt.setVolume(clamped);
         }
       } catch (e) {}
     }
   }, []);
 
   const toggleMute = useCallback(() => {
-    setIsMuted((prev) => {
-      const next = !prev;
-      isMutedRef.current = next;
-      try {
-        localStorage.setItem('nocturne_muted', String(next));
-      } catch (e) {}
+    const nextMuted = !isMutedRef.current;
+    setIsMuted(nextMuted);
+    isMutedRef.current = nextMuted;
+    try {
+      localStorage.setItem('nocturne_muted', String(nextMuted));
+    } catch (e) {}
 
-      if (audioRef.current) {
-        audioRef.current.muted = next;
-      }
-      if (ytPlayerRef.current) {
-        try {
-          if (next && typeof ytPlayerRef.current.mute === 'function') {
-            ytPlayerRef.current.mute();
-          } else if (!next && typeof ytPlayerRef.current.unMute === 'function') {
-            ytPlayerRef.current.unMute();
-            if (typeof ytPlayerRef.current.setVolume === 'function') {
-              ytPlayerRef.current.setVolume(volumeRef.current);
-            }
+    if (audioRef.current) {
+      audioRef.current.muted = nextMuted;
+    }
+
+    const yt = typeof window !== 'undefined' ? ((window as any).__nocturneYtPlayer || ytPlayerRef.current) : ytPlayerRef.current;
+    if (yt) {
+      try {
+        if (nextMuted) {
+          if (typeof yt.mute === 'function') yt.mute();
+        } else {
+          if (typeof yt.unMute === 'function') yt.unMute();
+          if (typeof yt.setVolume === 'function') {
+            yt.setVolume(volumeRef.current || 50);
           }
-        } catch (e) {}
-      }
-      return next;
-    });
+        }
+      } catch (e) {}
+    }
   }, []);
 
   const voteSkip = async (trackId: string) => {

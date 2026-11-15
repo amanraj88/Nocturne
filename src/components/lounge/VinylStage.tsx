@@ -184,13 +184,17 @@ export const VinylStage: React.FC = () => {
               if (destroyed) return;
               isInitializingPlayerRef.current = false;
               ytPlayerInstanceRef.current = event.target;
+              (window as any).__nocturneYtPlayer = event.target;
               (window as any).__NOCTURNE_YT_PLAYER__ = event.target;
               registerYouTubePlayerRef.current(event.target);
 
               try {
-                event.target.setVolume(volumeRef.current);
-                if (isMutedRef.current) event.target.mute();
-                else event.target.unMute();
+                if (isMutedRef.current || volumeRef.current === 0) {
+                  event.target.mute();
+                } else {
+                  event.target.unMute();
+                  event.target.setVolume(Math.round(volumeRef.current));
+                }
               } catch (e) {}
 
               if (activeYtId) {
@@ -282,6 +286,10 @@ export const VinylStage: React.FC = () => {
         } catch (e) {}
         ytPlayerInstanceRef.current = null;
       }
+      try {
+        delete (window as any).__nocturneYtPlayer;
+        delete (window as any).__NOCTURNE_YT_PLAYER__;
+      } catch (e) {}
       registerYouTubePlayer(null);
     };
   }, []);
@@ -365,14 +373,14 @@ export const VinylStage: React.FC = () => {
 
   // Synchronize volume and mute states
   useEffect(() => {
-    const player = ytPlayerInstanceRef.current;
+    const player = ytPlayerInstanceRef.current || (typeof window !== 'undefined' ? (window as any).__nocturneYtPlayer : null);
     if (!player) return;
     try {
       if (isMuted || volume === 0) {
         player.mute?.();
       } else {
         player.unMute?.();
-        player.setVolume?.(volume);
+        player.setVolume?.(Math.round(volume));
       }
     } catch (e) {}
   }, [volume, isMuted]);

@@ -43,9 +43,10 @@ export const QueueDock: React.FC = () => {
     const url = youtubeInputUrl.trim();
     if (!url || isAddingUrl) return;
 
+    const isPlaylistUrl = /[?&]list=([a-zA-Z0-9_-]+)/.test(url) && (!url.includes('v=') || url.includes('/playlist'));
     const videoId = parseYouTubeVideoId(url);
-    if (!videoId) {
-      setInputError('Please enter a valid YouTube video URL or ID.');
+    if (!videoId && !isPlaylistUrl) {
+      setInputError('Please enter a valid YouTube video or playlist URL.');
       return;
     }
 
@@ -53,15 +54,44 @@ export const QueueDock: React.FC = () => {
     setInputError(null);
 
     try {
-      const res = await fetch(`/api/youtube/info?id=${encodeURIComponent(videoId)}`);
+      const endpoint = isPlaylistUrl
+        ? `/api/youtube/info?url=${encodeURIComponent(url)}`
+        : `/api/youtube/info?id=${encodeURIComponent(videoId!)}`;
+
+      const res = await fetch(endpoint);
       let info: any = null;
       try {
         info = await res.json();
       } catch {}
 
+      // Handle Playlist batch insertion
+      if (info && info.isPlaylist && Array.isArray(info.tracks)) {
+        if (info.tracks.length === 0) {
+          setInputError('Playlist is empty or contains no accessible tracks.');
+          setIsAddingUrl(false);
+          return;
+        }
+
+        for (const track of info.tracks) {
+          await addTrackToQueue({
+            title: track.title || 'YouTube Track',
+            artist: info.playlistTitle || 'YouTube Playlist',
+            youtubeId: track.youtubeId,
+            durationSeconds: track.durationSeconds || 0,
+            artworkId: currentRoom?.artworkId || 'noc-01',
+            albumArt: track.thumbnailUrl || `https://i.ytimg.com/vi/${track.youtubeId}/hqdefault.jpg`,
+            sourceType: 'youtube',
+          });
+        }
+
+        setYoutubeInputUrl('');
+        setInputError(null);
+        return;
+      }
+
       let title = 'YouTube Track';
       let artist = 'YouTube Broadcast';
-      let thumbnail = `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+      let thumbnail = videoId ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` : '';
       let durationSeconds = 0;
 
       if (res.ok && info && info.valid !== false) {
@@ -82,7 +112,7 @@ export const QueueDock: React.FC = () => {
       const didAdd = await addTrackToQueue({
         title: title || 'YouTube Track',
         artist: artist || 'YouTube Broadcast',
-        youtubeId: (info && info.videoId) || videoId,
+        youtubeId: (info && info.videoId) || videoId || '',
         durationSeconds: info.durationSeconds || 0,
         artworkId: currentRoom?.artworkId || 'noc-01',
         albumArt: thumbnail || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
