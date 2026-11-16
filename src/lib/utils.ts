@@ -82,3 +82,21 @@ export function parseYouTubeVideoId(input: string): string | null {
 
   return null;
 }
+
+/**
+ * Maps legacy synthetic/two-adjective seeded room titles to clean, natural display names.
+ */
+export function formatRoomTitle(title?: string, slug?: string, id?: string): string {
+  const t = title?.trim() || '';
+  const s = `${slug || ''} ${id || ''}`.toLowerCase();
+  if (s.includes('tokyo-afterhours') || t === 'Shibuya Midnight Reverie') {
+    return 'Tokyo Afterhours';
+  }
+  if (s.includes('reykjavik-ambient') || t === 'Reykjavik Obsidian Echoes') {
+    return 'Reykjavik Ambient';
+  }
+  if (s.includes('berlin-dub') || t === 'Kreuzberg Concrete Velvet') {
+    return 'Berlin Dub';
+  }
+  return t || 'Untitled Room';
+}

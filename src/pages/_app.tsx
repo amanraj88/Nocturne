@@ -11,7 +11,7 @@ export default function App({ Component, pageProps }: AppProps) {
   return (
     <LoungeProvider>
       <Head>
-        <title>NOCTURNE: Music hits different together</title>
+        <title>NOCTURNE — Listen to YouTube together</title>
         <meta
           name="description"
           content="Independent electronic music culture-inspired social listening lounge."

@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import { useLounge } from '@/context/LoungeContext';
 import { Room } from '@/types';
 import { STARTER_TAPES, StarterTape, TapeMood } from '@/data/starterTapes';
+import { formatRoomTitle } from '@/lib/utils';
 import { Disc, Users, Loader2, Radio } from 'lucide-react';
 
 const CATEGORIES: Array<'All Rooms' | TapeMood> = [
@@ -41,16 +42,19 @@ export const LiveLoungesGrid: React.FC = () => {
 
   // Filter only genuine, active user rooms
   const activeRooms = rooms.filter((r) => !r.isFeatured && r.id);
+  const spotlightRoomId = activeRooms.length > 0 ? activeRooms[0].id : null;
 
-  const filteredLiveRooms = activeRooms.filter((room) => {
-    if (activeCategory === 'All Rooms') return true;
-    const cat = activeCategory.toLowerCase();
-    return (
-      room.vibeTag.toLowerCase().includes(cat) ||
-      room.title.toLowerCase().includes(cat) ||
-      room.description.toLowerCase().includes(cat)
-    );
-  });
+  const filteredLiveRooms = activeRooms
+    .filter((room) => !spotlightRoomId || room.id !== spotlightRoomId)
+    .filter((room) => {
+      if (activeCategory === 'All Rooms') return true;
+      const cat = activeCategory.toLowerCase();
+      return (
+        room.vibeTag.toLowerCase().includes(cat) ||
+        room.title.toLowerCase().includes(cat) ||
+        room.description.toLowerCase().includes(cat)
+      );
+    });
 
   // Filter out any Starter Tape whose title already matches an active Live Room,
   // or that is currently featured in the Hero spotlight when no live user rooms are active
@@ -129,10 +133,16 @@ export const LiveLoungesGrid: React.FC = () => {
             >
               <div>
                 <div className="flex items-center justify-between min-w-0 gap-2">
-                  <span className="text-[11px] font-medium text-[#10B981] flex items-center gap-1.5 font-mono shrink-0">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
-                    LIVE · {room.listenerCount} listening
-                  </span>
+                  {room.listenerCount > 0 ? (
+                    <span className="text-[11px] font-medium text-[#10B981] flex items-center gap-1.5 font-mono shrink-0">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
+                      LIVE · {room.listenerCount} listening
+                    </span>
+                  ) : (
+                    <span className="text-[11px] font-medium text-[var(--text-muted)] font-mono shrink-0">
+                      Featured
+                    </span>
+                  )}
                   <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-[var(--bg-recessed)] text-[var(--text-muted)] border border-[var(--border-subtle)] shrink-0">
                     {room.vibeTag || 'Live Room'}
                   </span>
@@ -150,7 +160,7 @@ export const LiveLoungesGrid: React.FC = () => {
                       {coverUrl ? (
                         <img
                           src={coverUrl}
-                          alt={room.title}
+                          alt={formatRoomTitle(room.title, room.slug, room.id)}
                           onError={(e) => {
                             e.currentTarget.style.display = 'none';
                             if (e.currentTarget.nextElementSibling) {
@@ -177,7 +187,7 @@ export const LiveLoungesGrid: React.FC = () => {
 
                   <div className="flex-1 min-w-0 overflow-hidden">
                     <h3 className="font-syne font-bold text-sm text-[var(--text-primary)] truncate">
-                      {room.title}
+                      {formatRoomTitle(room.title, room.slug, room.id)}
                     </h3>
                     <p className="text-xs text-[var(--text-muted)] mt-0.5 truncate">
                       Hosted by {room.host?.name || 'Curator'}
@@ -189,13 +199,17 @@ export const LiveLoungesGrid: React.FC = () => {
               <div className="mt-4 pt-3 border-t border-[var(--border-subtle)] flex items-center justify-between gap-2 min-w-0">
                 <span className="text-[11px] text-[var(--text-muted)] flex items-center gap-1 shrink-0">
                   <Users className="w-3 h-3" />
-                  <span>{room.listenerCount} in room</span>
+                  <span>
+                    {room.listenerCount > 0
+                      ? `${room.listenerCount} listening`
+                      : 'Ready to play'}
+                  </span>
                 </span>
                 <Link
                   href={`/room/${room.slug}`}
-                  className="h-8 px-3.5 rounded-md bg-[#111115] text-white dark:bg-[#F4F4F6] dark:text-[#111115] hover:opacity-90 font-medium text-xs flex items-center justify-center transition-opacity shrink-0"
+                  className="h-8 px-3.5 rounded-md bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[#8B5CF6]/40 text-[var(--text-primary)] font-medium text-xs flex items-center justify-center transition-colors shrink-0"
                 >
-                  Tune In
+                  Open Room
                 </Link>
               </div>
             </article>

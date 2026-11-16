@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import { useLounge } from '@/context/LoungeContext';
 import { Room } from '@/types';
 import { STARTER_TAPES } from '@/data/starterTapes';
+import { formatRoomTitle } from '@/lib/utils';
 import { Plus, Disc, Loader2, ArrowRight } from 'lucide-react';
 
 const getLiveRoomCover = (room: Room): string | null => {
@@ -125,7 +126,7 @@ export const HeroSection: React.FC = () => {
                 href={`/room/${currentRoom.slug}`}
                 className="text-xs font-medium text-[#8B5CF6] hover:underline inline-flex items-center gap-1"
               >
-                <span>{currentRoom.title || currentRoom.slug}</span>
+                <span>{formatRoomTitle(currentRoom.title, currentRoom.slug, currentRoom.id) || currentRoom.slug}</span>
                 <ArrowRight className="w-3 h-3" />
               </Link>
             </div>
@@ -145,10 +146,16 @@ export const HeroSection: React.FC = () => {
                 /* Live Room Spotlight */
                 <div className="flex flex-col gap-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-medium text-[#10B981] flex items-center gap-1.5 font-mono">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
-                      LIVE · {room.listenerCount} listening
-                    </span>
+                    {room.listenerCount > 0 ? (
+                      <span className="text-[11px] font-medium text-[#10B981] flex items-center gap-1.5 font-mono">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
+                        LIVE · {room.listenerCount} listening
+                      </span>
+                    ) : (
+                      <span className="text-[11px] font-medium text-[var(--text-muted)] font-mono">
+                        Featured
+                      </span>
+                    )}
                     <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-[var(--bg-recessed)] text-[var(--text-muted)] border border-[var(--border-subtle)]">
                       {room.vibeTag || 'Live Room'}
                     </span>
@@ -166,7 +173,7 @@ export const HeroSection: React.FC = () => {
                         {coverUrl ? (
                           <img
                             src={coverUrl}
-                            alt={room.title}
+                            alt={formatRoomTitle(room.title, room.slug, room.id)}
                             onError={(e) => {
                               e.currentTarget.style.display = 'none';
                               if (e.currentTarget.nextElementSibling) {
@@ -193,7 +200,7 @@ export const HeroSection: React.FC = () => {
 
                     <div className="flex-1 min-w-0">
                       <h3 className="font-syne font-bold text-base text-[var(--text-primary)] truncate">
-                        {room.title}
+                        {formatRoomTitle(room.title, room.slug, room.id)}
                       </h3>
                       <p className="text-xs text-[var(--text-muted)] mt-1 truncate">
                         Hosted by {room.host?.name || 'Curator'}
@@ -203,9 +210,9 @@ export const HeroSection: React.FC = () => {
 
                   <Link
                     href={`/room/${room.slug}`}
-                    className="w-full h-10 rounded-lg bg-[#F4F4F6] text-[#111115] dark:bg-[#F4F4F6] dark:text-[#111115] hover:opacity-90 font-medium text-xs sm:text-sm flex items-center justify-center transition-opacity"
+                    className="w-full h-10 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[#8B5CF6]/40 text-[var(--text-primary)] font-medium text-xs sm:text-sm flex items-center justify-center transition-colors"
                   >
-                    <span>Tune In</span>
+                    <span>Open Room</span>
                   </Link>
                 </div>
               );

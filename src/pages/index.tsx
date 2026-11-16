@@ -8,7 +8,7 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>NOCTURNE — Music hits different together</title>
+        <title>NOCTURNE — Listen to YouTube together</title>
       </Head>
       <div className="flex flex-col min-h-full">
         <HeroSection />

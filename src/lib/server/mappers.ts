@@ -1,5 +1,6 @@
 import { Room, Track, ChatMessage } from '@/types';
 import { RoomPlaybackState } from './rooms';
+import { formatRoomTitle } from '@/lib/utils';
 
 /**
  * Transforms a Supabase PostgreSQL rooms row into a NOCTURNE Room object.
@@ -13,7 +14,7 @@ export function mapDbRoomToRoom(row: any, listenerCount = 0): Room {
   return {
     id: row.id,
     slug: row.slug,
-    title: row.title,
+    title: formatRoomTitle(row.title, row.slug || row.id),
     vibeTag: row.vibe_tag || 'Ambient & Modular',
     description: row.description || '',
     artworkId: row.artwork_id || 'noc-01',
