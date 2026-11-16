@@ -2,7 +2,7 @@
 
 Watch and listen to YouTube together in real time. Create a room, drop YouTube links into the queue, and everyone hears the exact same second with live room chat built in.
 
-**Live:** [nocturne-steel-xi.vercel.app](https://nocturne-listen.vercel.app/)
+**Live:** (https://nocturne-listen.vercel.app/)
 
 ---
 
