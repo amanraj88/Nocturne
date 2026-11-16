@@ -52,12 +52,18 @@ export const LiveLoungesGrid: React.FC = () => {
     );
   });
 
-  // Filter out any Starter Tape whose title already matches an active Live Room
+  // Filter out any Starter Tape whose title already matches an active Live Room,
+  // or that is currently featured in the Hero spotlight when no live user rooms are active
   const filteredTapes = STARTER_TAPES.filter((tape) => {
     const isAlreadyLive = activeRooms.some(
       (r) => r.title.trim().toLowerCase() === tape.title.trim().toLowerCase()
     );
     if (isAlreadyLive) return false;
+
+    // Exclude the Hero spotlight tape (After Hours Electronic) when no live user rooms are active
+    if (activeRooms.length === 0 && tape.id === 'after-hours-electronic') {
+      return false;
+    }
 
     if (activeCategory === 'All Rooms') return true;
     return tape.mood === activeCategory;

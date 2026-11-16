@@ -115,7 +115,7 @@ export const Header: React.FC = () => {
             className="hidden sm:inline-flex h-[30px] md:h-[34px] px-2.5 md:px-3.5 bg-[#F43F5E] hover:bg-[#E11D48] text-white font-inter font-medium text-[12px] md:text-[13px] rounded-[6px] md:rounded-lg items-center gap-1 md:gap-1.5 transition-colors shadow-none active:translate-y-px shrink-0"
           >
             <Plus className="w-3.5 h-3.5 md:w-4 md:h-4 stroke-[2.5]" />
-            <span>Create Room</span>
+            <span>Start a Room</span>
           </button>
         </div>
       </div>

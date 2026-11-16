@@ -106,7 +106,7 @@ export const HeroSection: React.FC = () => {
                 value={joinInput}
                 onChange={(e) => setJoinInput(e.target.value)}
                 placeholder="Paste room link or code"
-                className="flex-1 min-w-0 bg-transparent border-0 outline-none focus:ring-0 text-xs sm:text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] p-0"
+                className="flex-1 min-w-0 !bg-transparent bg-transparent border-0 shadow-none outline-none focus:ring-0 text-xs sm:text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] p-0"
               />
               <button
                 type="submit"
