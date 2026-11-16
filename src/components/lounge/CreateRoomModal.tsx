@@ -57,7 +57,7 @@ export const CreateRoomModal: React.FC = () => {
         const videoId = match && match[2].length === 11 ? match[2] : null;
 
         if (videoId) {
-          void addTrackToQueue({
+          await addTrackToQueue({
             title: title.trim() + ' — Opening Track',
             artist: 'YouTube',
             youtubeId: videoId,

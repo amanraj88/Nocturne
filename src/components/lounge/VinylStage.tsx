@@ -59,6 +59,24 @@ export const VinylStage: React.FC = () => {
   const [ytErrorNotice, setYtErrorNotice] = useState<string | null>(null);
   const [showTapToUnmute, setShowTapToUnmute] = useState(false);
 
+  // Expose test & automation hooks on window
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).__nocturneSeekTo = (sec: number) => seekTo(sec, true);
+      (window as any).__nocturneTogglePlay = () => togglePlay();
+      (window as any).__nocturneSkipTrack = () => skipTrack(true);
+      (window as any).__nocturnePlay = () => {
+        if (!isPlayingRef.current) togglePlay();
+        try { ytPlayerInstanceRef.current?.playVideo?.(); } catch {}
+      };
+      (window as any).__nocturnePause = () => {
+        if (isPlayingRef.current) togglePlay();
+        try { ytPlayerInstanceRef.current?.pauseVideo?.(); } catch {}
+      };
+      (window as any).__nocturneIsPlaying = () => isPlayingRef.current;
+    }
+  }, [seekTo, togglePlay, skipTrack]);
+
   const stageRootRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const ytPlayerInstanceRef = useRef<any>(null);
@@ -230,7 +248,7 @@ export const VinylStage: React.FC = () => {
                 const player = event.target || ytPlayerInstanceRef.current;
                 const targetSeconds = progressSecondsRef.current;
                 const currentTime = player && typeof player.getCurrentTime === 'function' ? player.getCurrentTime() : 0;
-                if (Math.abs(currentTime - targetSeconds) > 2.5) {
+                if (Math.abs(currentTime - targetSeconds) > 0.8) {
                   if (player && typeof player.seekTo === 'function') {
                     try {
                       player.seekTo(targetSeconds, true);
@@ -354,10 +372,10 @@ export const VinylStage: React.FC = () => {
         const curTime = player.getCurrentTime?.();
         if (typeof curTime !== 'number' || !isFinite(curTime)) return;
 
-        // If local player drifts from authoritative progressSeconds by > 2.5s, gently seek
+        // If local player drifts from authoritative progressSeconds by > 2.5s (or > 0.9s), gently seek
         const targetSeconds = progressSecondsRef.current;
         const drift = Math.abs(curTime - targetSeconds);
-        if (drift > 2.5 && !isSeekingDueToSyncRef.current) {
+        if ((drift > 2.5 || drift > 0.9) && !isSeekingDueToSyncRef.current) {
           isSeekingDueToSyncRef.current = true;
           if (typeof player.seekTo === 'function') {
             player.seekTo(targetSeconds, true);
@@ -389,17 +407,30 @@ export const VinylStage: React.FC = () => {
 
   // Mobile tab-return audio recovery: on visible, seek to live playhead, unmute & resume
   useEffect(() => {
+    let hiddenAt: number | null = null;
+    let hiddenProgress = 0;
+
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        const player = ytPlayerInstanceRef.current || (typeof window !== 'undefined' ? (window as any).__nocturneYtPlayer : null);
+      const player = ytPlayerInstanceRef.current || (typeof window !== 'undefined' ? (window as any).__nocturneYtPlayer : null);
+      if (document.visibilityState === 'hidden') {
+        hiddenAt = Date.now();
+        hiddenProgress = (player && typeof player.getCurrentTime === 'function' ? player.getCurrentTime() : progressSecondsRef.current) || 0;
+      } else if (document.visibilityState === 'visible') {
         if (player && isPlayingRef.current) {
           try {
-            const targetSec = progressSecondsRef.current || 0;
+            let targetSec = progressSecondsRef.current || 0;
+            if (hiddenAt && Date.now() - hiddenAt > 300) {
+              const elapsedSec = (Date.now() - hiddenAt) / 1000;
+              targetSec = Math.min(durationSeconds > 0 ? durationSeconds : Infinity, hiddenProgress + elapsedSec);
+              seekTo(Math.floor(targetSec), false);
+            }
             player.seekTo?.(targetSec, true);
             player.unMute?.();
             player.setVolume?.(Math.round(volumeRef.current || 80));
             player.playVideo?.();
           } catch (e) {}
+
+          hiddenAt = null;
 
           setTimeout(() => {
             try {
@@ -414,7 +445,7 @@ export const VinylStage: React.FC = () => {
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, []);
+  }, [durationSeconds, seekTo]);
 
   const activeArtworkId = currentTrack?.artworkId || currentRoom.artworkId || 'noc-01';
   const displayTitle = currentTrack?.title || 'No track playing';

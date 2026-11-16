@@ -435,17 +435,23 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
 
       // 4. Stale and out-of-order rejection
-      if (typeof payload.revision === 'number') {
+      const hasRevision = typeof payload.revision === 'number' && payload.revision > 0;
+      if (hasRevision) {
         if (payload.revision <= lastReceivedRevisionRef.current) {
           return;
         }
         lastReceivedRevisionRef.current = payload.revision;
-      }
-      if (typeof payload.timestamp === 'number') {
+        if (typeof payload.timestamp === 'number') {
+          lastReceivedTimestampRef.current = Math.max(lastReceivedTimestampRef.current, payload.timestamp);
+        }
+      } else if (typeof payload.timestamp === 'number') {
         if (payload.timestamp < lastReceivedTimestampRef.current) {
           return;
         }
         lastReceivedTimestampRef.current = payload.timestamp;
+        if (typeof payload.revision === 'number') {
+          lastReceivedRevisionRef.current = payload.revision;
+        }
       }
 
       // 5. Apply track change
@@ -453,6 +459,11 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const idx = queueRef.current.findIndex((t) => t.id === payload.trackId);
         if (idx !== -1) {
           setCurrentTrackIndex(idx);
+          currentTrackIndexRef.current = idx;
+          currentTrackRef.current = queueRef.current[idx];
+          const startProgress = typeof payload.progressSeconds === 'number' ? payload.progressSeconds : 0;
+          setProgressSeconds(startProgress);
+          progressSecondsRef.current = startProgress;
         }
       }
 
@@ -478,36 +489,43 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
       }
 
-      // 7. Apply seek / drift correction (immediate on SEEK payload, or 2.0s tolerance threshold)
+      // 7. Apply seek / drift correction with transit delay compensation
       if (typeof payload.progressSeconds === 'number') {
+        const transitDelaySec = (typeof payload.timestamp === 'number' && (payload.isPlaying ?? isPlayingRef.current))
+          ? Math.max(0, Math.min(5, (Date.now() - payload.timestamp) / 1000))
+          : 0;
+        const targetSeconds = payload.progressSeconds + transitDelaySec;
+
         const localCurrentTime = isYouTubeActiveRef.current && ytPlayerRef.current?.getCurrentTime
           ? (ytPlayerRef.current.getCurrentTime() || 0)
           : (audioRef.current && isFinite(audioRef.current.currentTime) ? audioRef.current.currentTime : progressSecondsRef.current);
         const drift = Math.abs(localCurrentTime - payload.progressSeconds);
         if (payload.type === 'SEEK') {
+          const effectiveTarget = payload.progressSeconds;
           lastSeekTimestampRef.current = Date.now();
-          setProgressSeconds(payload.progressSeconds);
-          progressSecondsRef.current = payload.progressSeconds;
+          setProgressSeconds(effectiveTarget);
+          progressSecondsRef.current = effectiveTarget;
           if (isYouTubeActiveRef.current && ytPlayerRef.current && typeof ytPlayerRef.current.seekTo === 'function') {
             try {
-              ytPlayerRef.current.seekTo(payload.progressSeconds, true);
+              ytPlayerRef.current.seekTo(effectiveTarget, true);
             } catch (err) {}
           } else if (isLocalAudioActiveRef.current && audioRef.current && isFinite(audioRef.current.duration)) {
             try {
-              audioRef.current.currentTime = payload.progressSeconds;
+              audioRef.current.currentTime = effectiveTarget;
             } catch (err) {}
           }
         } else if (drift > 2.0) {
+          const effectiveTarget = Math.round(targetSeconds);
           lastSeekTimestampRef.current = Date.now();
-          setProgressSeconds(payload.progressSeconds);
-          progressSecondsRef.current = payload.progressSeconds;
+          setProgressSeconds(effectiveTarget);
+          progressSecondsRef.current = effectiveTarget;
           if (isYouTubeActiveRef.current && ytPlayerRef.current && typeof ytPlayerRef.current.seekTo === 'function') {
             try {
-              ytPlayerRef.current.seekTo(payload.progressSeconds, true);
+              ytPlayerRef.current.seekTo(effectiveTarget, true);
             } catch (err) {}
           } else if (isLocalAudioActiveRef.current && audioRef.current && isFinite(audioRef.current.duration)) {
             try {
-              audioRef.current.currentTime = payload.progressSeconds;
+              audioRef.current.currentTime = effectiveTarget;
             } catch (err) {}
           }
         }
@@ -1510,7 +1528,7 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           progressSeconds: currentSecs,
         });
       }
-    }, 5000);
+    }, 2500);
 
     return () => clearInterval(interval);
   }, [isPlaying, currentTrack?.id, isYouTubeActive, dispatchServerAction, clientId]);
@@ -2598,6 +2616,11 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
         setProgressSeconds(initialProgress);
         progressSecondsRef.current = initialProgress;
+        if (isYouTubeActiveRef.current && ytPlayerRef.current && typeof ytPlayerRef.current.seekTo === 'function') {
+          try {
+            ytPlayerRef.current.seekTo(initialProgress, true);
+          } catch (e) {}
+        }
         const initialRevision = typeof data.playback.revision === 'number' ? data.playback.revision : 0;
         playbackRevisionRef.current = initialRevision;
         lastReceivedRevisionRef.current = initialRevision;
