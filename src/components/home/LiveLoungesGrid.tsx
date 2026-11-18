@@ -19,16 +19,35 @@ const getLiveRoomCover = (room: Room): string | null => {
   const current = (room as any).currentTrack;
   if (current?.thumbnailUrl) return current.thumbnailUrl;
   if (current?.albumArt) return current.albumArt;
+  if (current?.youtubeId) return `https://i.ytimg.com/vi/${current.youtubeId}/hqdefault.jpg`;
 
   const firstQueue = (room as any).queue?.[0];
   if (firstQueue?.thumbnailUrl) return firstQueue.thumbnailUrl;
   if (firstQueue?.albumArt) return firstQueue.albumArt;
+  if (firstQueue?.youtubeId) return `https://i.ytimg.com/vi/${firstQueue.youtubeId}/hqdefault.jpg`;
 
   const matchingTape = STARTER_TAPES.find(
-    (t) => t.title.trim().toLowerCase() === room.title?.trim().toLowerCase()
+    (t) =>
+      t.title.trim().toLowerCase() === room.title?.trim().toLowerCase() ||
+      t.id === room.slug ||
+      t.id === room.id
   );
   if (matchingTape?.tracks?.[0]?.thumbnailUrl) {
     return matchingTape.tracks[0].thumbnailUrl;
+  }
+  if (matchingTape?.tracks?.[0]?.youtubeId) {
+    return `https://i.ytimg.com/vi/${matchingTape.tracks[0].youtubeId}/hqdefault.jpg`;
+  }
+
+  const slug = (room.slug || room.id || '').toLowerCase();
+  if (slug.includes('tokyo-afterhours') || slug.includes('shibuya')) {
+    return 'https://i.ytimg.com/vi/A7ZxRs45tTg/hqdefault.jpg';
+  }
+  if (slug.includes('reykjavik-ambient') || slug.includes('reykjavik')) {
+    return 'https://i.ytimg.com/vi/4y33h81phKU/hqdefault.jpg';
+  }
+  if (slug.includes('berlin-dub') || slug.includes('kreuzberg')) {
+    return 'https://i.ytimg.com/vi/V-_O7nl0Ii0/hqdefault.jpg';
   }
 
   return null;
@@ -99,7 +118,7 @@ export const LiveLoungesGrid: React.FC = () => {
         </div>
 
         {/* Category Filter Chips */}
-        <div className="flex items-center gap-2 w-full max-w-full min-w-0 overflow-x-auto pb-2 no-scrollbar touch-pan-x">
+        <div className="flex items-center gap-2 w-full max-w-full min-w-0 overflow-x-auto pb-2 no-scrollbar [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] touch-pan-x">
           {CATEGORIES.map((cat) => {
             const isActive = activeCategory === cat;
             return (
@@ -207,7 +226,7 @@ export const LiveLoungesGrid: React.FC = () => {
                 </span>
                 <Link
                   href={`/room/${room.slug}`}
-                  className="h-8 px-3.5 rounded-md bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[#8B5CF6]/40 text-[var(--text-primary)] font-medium text-xs flex items-center justify-center transition-colors shrink-0"
+                  className="h-8 px-3.5 rounded-md dark:bg-white/[0.07] dark:hover:bg-white/[0.13] dark:border-white/15 dark:hover:border-white/25 dark:text-white bg-black/[0.05] hover:bg-black/[0.09] border border-black/15 text-neutral-900 active:scale-[0.98] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition-all font-medium text-xs flex items-center justify-center shrink-0"
                 >
                   Open Room
                 </Link>
@@ -269,13 +288,13 @@ export const LiveLoungesGrid: React.FC = () => {
 
               <div className="mt-4 pt-3 border-t border-[var(--border-subtle)] flex items-center justify-between gap-2 min-w-0">
                 <span className="text-[11px] text-[var(--text-muted)] truncate min-w-0 font-mono">
-                  {tape.tracks.length} tracks ({tape.totalDurationLabel?.match(/\d+m/)?.[0] || '35m'})
+                  {tape.tracks.length} tracks · {tape.totalDurationLabel?.match(/\d+m/)?.[0] || '35m'}
                 </span>
                 <button
                   type="button"
                   onClick={() => handleLaunchTape(tape)}
                   disabled={Boolean(launchingTapeId)}
-                  className="h-8 px-3.5 rounded-md bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[#8B5CF6]/40 text-[var(--text-primary)] font-medium text-xs flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50 shrink-0"
+                  className="h-8 px-3.5 rounded-md dark:bg-white/[0.07] dark:hover:bg-white/[0.13] dark:border-white/15 dark:hover:border-white/25 dark:text-white bg-black/[0.05] hover:bg-black/[0.09] border border-black/15 text-neutral-900 active:scale-[0.98] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition-all font-medium text-xs flex items-center justify-center gap-1.5 disabled:opacity-50 shrink-0"
                 >
                   {isThisTapeLaunching ? (
                     <>

@@ -23,7 +23,7 @@ export const STARTER_TAPES: StarterTape[] = [
     id: 'after-hours-electronic',
     title: 'After Hours Electronic',
     mood: 'Electronic',
-    subtitle: 'Bicep, Overmono, Four Tet, and Fred again..',
+    subtitle: 'Bicep, Overmono, Fred again.., and Four Tet',
     totalDurationLabel: 'Total 38m · 6 tracks',
     tracks: [
       {
