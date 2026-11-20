@@ -421,6 +421,61 @@ class RoomManager extends EventEmitter {
     return true;
   }
 
+  public promoteHost(roomId: string, targetUserId: string, targetUserName?: string): boolean {
+    const state = this.getRoomState(roomId);
+    if (!state) return false;
+
+    const targetParticipant = state.participants.get(targetUserId);
+    const newHostName = targetUserName || targetParticipant?.name || 'Listener';
+    const previousHost = { ...state.room.host };
+
+    // Update previous host in participants map
+    if (previousHost.id && state.participants.has(previousHost.id)) {
+      const prev = state.participants.get(previousHost.id)!;
+      prev.role = 'listener';
+    }
+
+    // Update new host in participants map
+    if (targetParticipant) {
+      targetParticipant.role = 'host';
+    }
+
+    // Update room host
+    state.room.host = {
+      id: targetUserId,
+      name: newHostName,
+      role: 'host',
+      isListening: true,
+      joinedAt: targetParticipant?.joinedAt || 'Just now',
+    };
+
+    // Add system message
+    const sysMsg: ChatMessage = {
+      id: `msg-${Date.now()}`,
+      user: {
+        id: targetUserId,
+        name: 'NOCTURNE',
+        role: 'host',
+        isListening: true,
+        joinedAt: '',
+      },
+      text: `${newHostName} is now the host`,
+      timestamp: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      isSystem: true,
+    };
+    state.chatMessages.push(sysMsg);
+
+    this.emitRoomUpdate(state.room.id, {
+      type: 'HOST_PROMOTED',
+      newHost: state.room.host,
+      previousHostId: previousHost.id,
+      systemMessage: sysMsg,
+    });
+    this.persistRooms();
+    return true;
+  }
+
   public removeTrackFromQueue(roomId: string, trackId: string) {
     const state = this.getRoomState(roomId);
     if (!state) return;

@@ -64,6 +64,8 @@ interface LoungeContextType {
   setIsCreateRoomOpen: (open: boolean) => void;
   leaveRoom: () => Promise<void>;
   endRoom: () => Promise<boolean>;
+  isHost: boolean;
+  promoteToHost: (targetUserId: string, targetUserName?: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 const LoungeContext = createContext<LoungeContextType | undefined>(undefined);
@@ -755,6 +757,28 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               else setCurrentTrackIndex((index) => Math.min(index, merged.queue.length - 1));
             }
             if (Array.isArray(state.chatMessages)) setChatMessages(state.chatMessages);
+            if (state.room && state.room.id) {
+              setCurrentRoom((prev) => ({
+                ...prev,
+                ...state.room,
+                host: state.room.host || prev.host,
+              }));
+              currentRoomRef.current = {
+                ...currentRoomRef.current,
+                ...state.room,
+                host: state.room.host || currentRoomRef.current.host,
+              };
+            }
+            if (Array.isArray(state.participants)) {
+              setMembers(state.participants.map((p: any) => ({
+                id: p.id,
+                name: p.name,
+                role: p.isHost ? 'host' : (p.role || 'listener'),
+                isListening: true,
+                joinedAt: p.joinedAt ? new Date(p.joinedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now',
+                avatar: p.avatar,
+              })));
+            }
           } catch (error) {
             console.warn('[NOCTURNE Realtime] Could not refresh persisted room state.');
           }
@@ -845,6 +869,36 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               setQueue(payload.queue);
               queueRef.current = payload.queue;
             }
+            void refreshPersistedRoomState();
+          })
+          .on('broadcast', { event: 'host_promoted' }, ({ payload }) => {
+            if (isCancelled || !payload?.newHostId) return;
+            const newHostName = payload.newHostName || 'Listener';
+            setCurrentRoom((prev) => ({
+              ...prev,
+              host: {
+                ...prev.host,
+                id: payload.newHostId,
+                name: newHostName,
+                role: 'host',
+              },
+            }));
+            currentRoomRef.current = {
+              ...currentRoomRef.current,
+              host: {
+                ...currentRoomRef.current.host,
+                id: payload.newHostId,
+                name: newHostName,
+                role: 'host',
+              },
+            };
+            setMembers((prev) =>
+              prev.map((m) => {
+                if (m.id === payload.newHostId) return { ...m, role: 'host' };
+                if (m.role === 'host') return { ...m, role: 'listener' };
+                return m;
+              })
+            );
             void refreshPersistedRoomState();
           })
           .on('broadcast', { event: 'room_ended' }, () => {
@@ -2899,6 +2953,127 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return true;
   }, [clientId]);
 
+  const promoteToHost = useCallback(
+    async (targetUserId: string, targetUserName?: string): Promise<{ success: boolean; error?: string }> => {
+      const room = currentRoomRef.current;
+      if (!room || !room.id) {
+        return { success: false, error: 'No active room' };
+      }
+      const effectiveMyId = authUidRef.current || clientId;
+      const callerIsHost = room.host?.id === effectiveMyId || room.host?.name === clientName;
+
+      if (!callerIsHost) {
+        return { success: false, error: 'Only the current room host can promote someone else.' };
+      }
+
+      if (targetUserId === room.host?.id) {
+        return { success: false, error: 'User is already the room host.' };
+      }
+
+      try {
+        const requestHeaders: Record<string, string> = {
+          'Content-Type': 'application/json',
+        };
+        if (isSupabaseConfigured()) {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.access_token) {
+            requestHeaders.Authorization = `Bearer ${session.access_token}`;
+          }
+        } else {
+          requestHeaders['x-user-id'] = effectiveMyId;
+        }
+
+        const targetRoomSlug = room.slug || room.id;
+        const res = await fetch(`/api/rooms/${encodeURIComponent(targetRoomSlug)}/promote`, {
+          method: 'POST',
+          headers: requestHeaders,
+          body: JSON.stringify({
+            requesterId: effectiveMyId,
+            targetUserId,
+            targetUserName,
+          }),
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok || !data.success) {
+          return { success: false, error: data.error || 'Failed to promote host' };
+        }
+
+        const newHostName = data.newHostName || targetUserName || 'Listener';
+
+        // Broadcast to all peers in the room
+        if (realtimeChannelRef.current) {
+          try {
+            await realtimeChannelRef.current.send({
+              type: 'broadcast',
+              event: 'host_promoted',
+              payload: {
+                newHostId: targetUserId,
+                newHostName,
+                senderId: effectiveMyId,
+              },
+            });
+          } catch (e) {}
+        }
+
+        // Update local state immediately
+        setCurrentRoom((prev) => ({
+          ...prev,
+          host: {
+            ...prev.host,
+            id: targetUserId,
+            name: newHostName,
+            role: 'host',
+          },
+        }));
+        currentRoomRef.current = {
+          ...currentRoomRef.current,
+          host: {
+            ...currentRoomRef.current.host,
+            id: targetUserId,
+            name: newHostName,
+            role: 'host',
+          },
+        };
+
+        setMembers((prev) =>
+          prev.map((m) => {
+            if (m.id === targetUserId) return { ...m, role: 'host' };
+            if (m.id === effectiveMyId || m.role === 'host') return { ...m, role: 'listener' };
+            return m;
+          })
+        );
+
+        const sysMsg: ChatMessage = {
+          id: `msg-${Date.now()}`,
+          user: {
+            id: targetUserId,
+            name: 'NOCTURNE',
+            role: 'host',
+            isListening: true,
+            joinedAt: '',
+          },
+          text: `${newHostName} is now the host`,
+          timestamp: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          isSystem: true,
+        };
+        setChatMessages((prev) => {
+          if (prev.some((m) => m.text === sysMsg.text && Math.abs(new Date(m.timestamp).getTime() - Date.now()) < 5000)) {
+            return prev;
+          }
+          return [...prev, sysMsg];
+        });
+
+        return { success: true };
+      } catch (err: any) {
+        return { success: false, error: err?.message || 'Network error while promoting host' };
+      }
+    },
+    [clientId, clientName]
+  );
+
   const updateClientName = useCallback((name: string) => {
     const trimmed = name.trim();
     if (!trimmed) return;
@@ -2978,6 +3153,11 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [togglePlay, seekTo, progressSeconds, durationSeconds, setVolume, volume, toggleMute]);
 
+  const isHost = Boolean(
+    currentRoom?.host?.id &&
+    (currentRoom.host.id === (authUid || clientId) || currentRoom.host.name === clientName)
+  );
+
   return (
     <LoungeContext.Provider
       value={{
@@ -3037,6 +3217,8 @@ export const LoungeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setIsCreateRoomOpen,
         leaveRoom,
         endRoom,
+        isHost,
+        promoteToHost,
       }}
     >
       {children}

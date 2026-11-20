@@ -32,6 +32,8 @@ export default function RoomPage() {
     setClientName,
     leaveRoom,
     endRoom,
+    isHost,
+    promoteToHost,
   } = useLounge();
 
   const [isMounted, setIsMounted] = useState(false);
@@ -40,6 +42,9 @@ export default function RoomPage() {
   const [isAvatarPopoverOpen, setIsAvatarPopoverOpen] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [newNameInput, setNewNameInput] = useState('');
+  const [promotingId, setPromotingId] = useState<string | null>(null);
+  const [confirmingPromoteId, setConfirmingPromoteId] = useState<string | null>(null);
+  const [promoteNotice, setPromoteNotice] = useState<string | null>(null);
   const popoverRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -58,6 +63,7 @@ export default function RoomPage() {
       if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
         setIsAvatarPopoverOpen(false);
         setIsEditingName(false);
+        setConfirmingPromoteId(null);
       }
     };
     if (isAvatarPopoverOpen) {
@@ -68,9 +74,29 @@ export default function RoomPage() {
     };
   }, [isAvatarPopoverOpen]);
 
-  const isHost = Boolean(
-    currentRoom?.host?.id && (currentRoom.host.id === clientId || currentRoom.host.name === clientName)
-  );
+  const handlePromoteHost = async (targetUserId: string, targetUserName: string) => {
+    if (confirmingPromoteId !== targetUserId) {
+      setConfirmingPromoteId(targetUserId);
+      return;
+    }
+    setConfirmingPromoteId(null);
+    setPromotingId(targetUserId);
+    try {
+      const res = await promoteToHost(targetUserId, targetUserName);
+      if (res.success) {
+        setPromoteNotice(`Handed over host to ${targetUserName}`);
+        setTimeout(() => setPromoteNotice(null), 4000);
+      } else {
+        setPromoteNotice(res.error || 'Failed to transfer host');
+        setTimeout(() => setPromoteNotice(null), 4000);
+      }
+    } catch {
+      setPromoteNotice('Failed to transfer host');
+      setTimeout(() => setPromoteNotice(null), 4000);
+    } finally {
+      setPromotingId(null);
+    }
+  };
 
   const handleCopyInvite = async () => {
     if (typeof window === 'undefined') return;
@@ -311,12 +337,21 @@ export default function RoomPage() {
                       </span>
                       <button
                         type="button"
-                        onClick={() => setIsAvatarPopoverOpen(false)}
+                        onClick={() => {
+                          setIsAvatarPopoverOpen(false);
+                          setConfirmingPromoteId(null);
+                        }}
                         className="text-[var(--text-muted)] hover:text-[var(--text-primary)] p-0.5"
                       >
                         <X className="w-3.5 h-3.5" />
                       </button>
                     </div>
+
+                    {promoteNotice && (
+                      <div className="mb-2 p-1.5 rounded-md bg-[var(--bg-recessed)] border border-[var(--border-subtle)] text-[11px] font-mono text-[#8B5CF6] text-center truncate">
+                        {promoteNotice}
+                      </div>
+                    )}
 
                     <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
                       {allParticipants.map((p) => {
@@ -349,6 +384,21 @@ export default function RoomPage() {
                                 <span className="px-1.5 py-0.5 rounded-[4px] bg-amber-500/15 text-amber-400 font-mono text-[9px] font-semibold tracking-wide">
                                   HOST
                                 </span>
+                              )}
+                              {isHost && !userIsHost && !isSelf && (
+                                <button
+                                  type="button"
+                                  onClick={() => handlePromoteHost(p.id, p.name)}
+                                  disabled={Boolean(promotingId)}
+                                  className="h-6 px-2 rounded text-[10px] font-medium dark:bg-white/[0.07] dark:hover:bg-white/[0.13] dark:border-white/15 dark:hover:border-white/25 dark:text-white bg-black/[0.05] hover:bg-black/[0.09] border border-black/15 text-neutral-900 active:scale-[0.98] transition-all flex items-center gap-1 disabled:opacity-50"
+                                  title={`Promote ${p.name} to host`}
+                                >
+                                  {promotingId === p.id
+                                    ? 'Promoting...'
+                                    : confirmingPromoteId === p.id
+                                    ? 'Confirm?'
+                                    : 'Make Host'}
+                                </button>
                               )}
                               {isSelf && !isEditingName && (
                                 <button

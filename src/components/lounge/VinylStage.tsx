@@ -457,7 +457,11 @@ export const VinylStage: React.FC = () => {
   return (
     <div
       ref={stageRootRef}
-      className="flex-1 w-full h-full flex flex-col justify-between relative overflow-hidden bg-[var(--bg-canvas)]"
+      className={`flex-1 w-full h-full flex flex-col justify-between relative overflow-hidden ${
+        isFullscreen
+          ? '!fixed inset-0 !w-screen !h-screen bg-black z-[9999]'
+          : 'bg-[var(--bg-canvas)]'
+      }`}
     >
       {/* Autoplay Blocked Tap-to-Sync Notice */}
       {(youtubePlaybackBlocked || audioPlaybackBlocked) && (
@@ -506,10 +510,14 @@ export const VinylStage: React.FC = () => {
       {/* ================================================================== */}
       {/* CENTER STAGE: Frameless Artwork-First Vinyl Stage / Video Display   */}
       {/* ================================================================== */}
-      <div className="flex-1 min-h-0 w-full flex items-center justify-center relative overflow-hidden p-4 select-none">
+      <div className={`flex-1 min-h-0 w-full flex items-center justify-center relative overflow-hidden select-none ${
+        isFullscreen ? 'p-0' : 'p-4'
+      }`}>
         {/* Dynamic Ambient Backlight (Adapts to current album art) */}
         <div
-          className="absolute w-[360px] h-[360px] sm:w-[440px] sm:h-[440px] rounded-full blur-[80px] opacity-25 dark:opacity-30 pointer-events-none transition-all duration-700 -z-0"
+          className={`absolute w-[360px] h-[360px] sm:w-[440px] sm:h-[440px] rounded-full blur-[80px] opacity-25 dark:opacity-30 pointer-events-none transition-all duration-700 -z-0 ${
+            isFullscreen ? 'hidden' : ''
+          }`}
           style={{
             background: trackArtworkUrl
               ? `url('${trackArtworkUrl}') center / cover no-repeat`
@@ -521,13 +529,17 @@ export const VinylStage: React.FC = () => {
         {/* Invariant: Room Audio • Stereo */}
         <div
           ref={containerRef}
-          className={`relative z-10 w-full max-w-[640px] rounded-xl overflow-hidden border border-[var(--border-subtle)] shadow-2xl bg-black transition-opacity duration-300 ${
+          className={`relative z-10 overflow-hidden bg-black transition-opacity duration-300 ${
             isVideoVisible
-              ? 'w-full aspect-video min-h-[205px] opacity-100 flex items-center justify-center'
+              ? 'w-full aspect-video min-h-[205px] opacity-100 flex items-center justify-center' + (isFullscreen ? ' h-full !aspect-auto !max-w-none' : ' max-w-[640px] rounded-xl border border-[var(--border-subtle)] shadow-2xl')
               : 'fixed -left-[9999px] top-0 w-[240px] h-[240px] min-h-[205px] opacity-0 pointer-events-none'
           }`}
         >
-          <div id="nocturne-yt-player" className="w-full h-full min-h-[205px]" />
+          <div id="nocturne-yt-player" className={`min-h-[205px] ${
+            isFullscreen && isVideoVisible
+              ? 'w-full h-full aspect-video max-h-screen max-w-[177.78vh]'
+              : 'w-full h-full'
+          }`} />
           {/* Transparent Pointer-Shield Overlay: prevents breaking synchronization via native YouTube controls */}
           <div className="absolute inset-0 z-20 pointer-events-auto bg-transparent" />
         </div>
@@ -625,14 +637,22 @@ export const VinylStage: React.FC = () => {
       {/* ================================================================== */}
       {/* 148px 3-TIER INTEGRATED PLAYER DECK                                */}
       {/* ================================================================== */}
-      <div className="w-full max-w-[840px] mx-auto border-t border-[var(--border-subtle)] px-3 sm:px-6 py-2 sm:py-3 flex flex-col justify-between gap-1 sm:gap-2 shrink-0 z-20 bg-[var(--bg-canvas)]/95">
+      <div className={`w-full mx-auto flex flex-col justify-between shrink-0 z-20 ${
+        isFullscreen
+          ? 'absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent px-6 pb-5 pt-12 max-w-none gap-2'
+          : 'max-w-[840px] border-t border-[var(--border-subtle)] px-3 sm:px-6 py-2 sm:py-3 gap-1 sm:gap-2 bg-[var(--bg-canvas)]/95'
+      }`}>
         {/* Tier 1 (44px): Track Identity & Mode Switcher */}
         <div className="h-10 flex items-center justify-between gap-2 sm:gap-3">
           <div className="min-w-0 flex-1 overflow-hidden pr-1 sm:pr-2">
-            <h2 className="font-syne text-[14px] sm:text-[18px] font-bold text-[var(--text-primary)] tracking-[-0.02em] leading-tight truncate min-w-0 flex-1">
+            <h2 className={`font-syne text-[14px] sm:text-[18px] font-bold tracking-[-0.02em] leading-tight truncate min-w-0 flex-1 ${
+              isFullscreen ? 'text-white' : 'text-[var(--text-primary)]'
+            }`}>
               {displayTitle}
             </h2>
-            <p className="text-[11px] sm:text-xs text-[var(--text-muted)] truncate mt-0.5 font-inter">
+            <p className={`text-[11px] sm:text-xs truncate mt-0.5 font-inter ${
+              isFullscreen ? 'text-white/60' : 'text-[var(--text-muted)]'
+            }`}>
               {displaySubtitle}
             </p>
           </div>

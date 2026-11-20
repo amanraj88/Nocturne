@@ -157,3 +157,39 @@ test('playback Broadcast authorization matches app event names and validates sav
   assert.doesNotMatch(realtimePolicyCorrection, /payload->>'senderId'/);
   assert.doesNotMatch(realtimePolicyCorrection, /SYNC_PLAYBACK|PLAYBACK_CONTROL/);
 });
+
+test('host promotion endpoint strictly enforces host-only authorization and non-host calls return 403', () => {
+  const promoteRoute = read('../src/pages/api/rooms/[id]/promote.ts');
+  assert.match(promoteRoute, /room\.host_id !== (userId|requesterUserId)/);
+  assert.match(promoteRoute, /status\(403\)/);
+  assert.match(promoteRoute, /Only the current room host can promote a listener to host/);
+  assert.match(promoteRoute, /targetId === room\.host_id/);
+  assert.match(promoteRoute, /User is already the host of this room/);
+  assert.match(promoteRoute, /status\(401\)/);
+  assert.match(promoteRoute, /Authentication required to promote host/);
+});
+
+test('host promotion atomically updates room host, reassigns roles, and former host loses host privileges', () => {
+  const promoteRoute = read('../src/pages/api/rooms/[id]/promote.ts');
+  const migration = read('../supabase/migrations/20261119_promote_room_host.sql');
+
+  assert.match(promoteRoute, /host_id:\s*targetId/);
+  assert.match(promoteRoute, /role:\s*'listener'/);
+  assert.match(promoteRoute, /role:\s*'host'/);
+  assert.match(promoteRoute, /is_system:\s*true/);
+  assert.match(promoteRoute, /roomManager\.promoteHost/);
+  assert.match(migration, /UPDATE public\.rooms[\s\S]*?SET host_id = p_target_user_id/);
+  assert.match(migration, /UPDATE public\.room_memberships[\s\S]*?SET role = 'listener'/);
+  assert.match(migration, /DO UPDATE SET role = 'host'/);
+});
+
+test('UI and LoungeContext expose promoteToHost and Make Host action for room host', () => {
+  const lounge = read('../src/context/LoungeContext.tsx');
+  const roomPage = read('../src/pages/room/[id].tsx');
+  assert.match(lounge, /promoteToHost/);
+  assert.match(lounge, /isHost/);
+  assert.match(lounge, /event:\s*'host_promoted'/);
+  assert.match(roomPage, /Make Host/);
+  assert.match(roomPage, /HOST/);
+  assert.match(roomPage, /handlePromoteHost/);
+});

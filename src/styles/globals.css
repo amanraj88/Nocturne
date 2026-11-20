@@ -486,3 +486,22 @@ html.light .bg-\[\#FBBF24\]\/10,
     scroll-behavior: auto !important;
   }
 }
+
+
+/* ================================================================
+   Fullscreen Player — CSS safety net for browser Esc key exit
+   ================================================================ */
+:fullscreen {
+  background: black !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+}
+
+:fullscreen iframe {
+  width: 100% !important;
+  height: 100% !important;
+}
